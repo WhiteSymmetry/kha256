@@ -1,0 +1,53 @@
+# Jupyter Book configuration
+title: "Keçeci Hash Algorithm (KHA-256)"
+author: "Mehmet Keçeci"
+logo: "logo.png"
+copyright: "2024 Mehmet Keçeci"
+license: "AGPL-3.0"
+
+# Book settings
+html:
+  baseurl: ""
+  home_page_in_navbar: true
+  use_edit_page_button: true
+  use_repository_button: true
+  repository_url: "https://github.com/WhiteSymmetry/kha256"
+  repository_branch: "main"
+  extra_footer: |
+    <p>© 2024 Mehmet Keçeci. Bu belge AGPL-3.0 lisansı altındadır.</p>
+
+# Execution settings
+execute:
+  execute_notebooks: force
+  timeout: 300
+  allow_errors: false
+
+# Parse settings
+parse:
+  myst_enable_extensions:
+    - colon_fence
+    - deflist
+    - dollarmath
+    - tasklist
+
+# Sphinx settings
+sphinx:
+  config:
+    language: "tr"
+    html_theme: "sphinx_book_theme"
+    html_theme_options:
+      logo_only: true
+      show_toc_level: 2
+      navigation_depth: 3
+      repository_url: "https://github.com/WhiteSymmetry/kha256"
+      repository_branch: "main"
+      path_to_docs: "content"
+      use_edit_page_button: true
+      use_repository_button: true
+      use_issues_button: true
+
+# LaTeX settings
+latex:
+  latex_engine: xelatex
+  latex_documents:
+    targetname: book.tex
