@@ -28,11 +28,11 @@ requirements:
     - setuptools
     # Other build tools
   run:
-    - python >=3.10
+    - python >=3.11
     - numpy
     # Other runtime dependencies
   build:
-    - python >=3.10
+    - python >=3.11
     - pip
     - setuptools
     - numpy
