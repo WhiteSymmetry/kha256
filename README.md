@@ -9,6 +9,33 @@
 ![Version](https://img.shields.io/badge/version-0.1.0-orange)
 ![Status](https://img.shields.io/badge/status-production--ready-brightgreen)
 
+[![PyPI version](https://badge.fury.io/py/kha256.svg)](https://badge.fury.io/py/kha256/)
+[![License: MIT](https://img.shields.io/badge/License-AGPL-yellow.svg)](https://opensource.org/license/agpl-v3)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18089401.svg)](https://doi.org/10.5281/zenodo.18089401)
+
+
+[![Anaconda-Server Badge](https://anaconda.org/bilgi/kha256/badges/version.svg)](https://anaconda.org/bilgi/kha256)
+[![Anaconda-Server Badge](https://anaconda.org/bilgi/kha256/badges/latest_release_date.svg)](https://anaconda.org/bilgi/kha256)
+[![Anaconda-Server Badge](https://anaconda.org/bilgi/kha256/badges/platforms.svg)](https://anaconda.org/bilgi/kha256)
+[![Anaconda-Server Badge](https://anaconda.org/bilgi/kha256/badges/license.svg)](https://anaconda.org/bilgi/kha256)
+
+[![Open Source](https://img.shields.io/badge/Open%20Source-Open%20Source-brightgreen.svg)](https://opensource.org/)
+[![Documentation Status](https://app.readthedocs.org/projects/kha256/badge/?0.1.0=main)](https://kha256.readthedocs.io/en/latest)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/11668/badge)](https://www.bestpractices.dev/projects/11668)
+
+[![Python CI](https://github.com/WhiteSymmetry/kha256/actions/workflows/python_ci.yml/badge.svg?branch=main)](https://github.com/WhiteSymmetry/kha256/actions/workflows/python_ci.yml)
+[![codecov](https://codecov.io/gh/WhiteSymmetry/kha256/graph/badge.svg?token=???)](https://codecov.io/gh/WhiteSymmetry/kha256)
+[![Documentation Status](https://readthedocs.org/projects/kha256/badge/?version=latest)](https://kha256.readthedocs.io/en/latest/)
+[![Binder](https://terrarium.evidencepub.io/badge_logo.svg)](https://terrarium.evidencepub.io/v2/gh/WhiteSymmetry/kha256/HEAD)
+
+[![PyPI version](https://badge.fury.io/py/kha256.svg)](https://badge.fury.io/py/kha256)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+[![Linted with Ruff](https://img.shields.io/badge/Linted%20with-Ruff-green?logo=python&logoColor=white)](https://github.com/astral-sh/ruff)
+[![Lang:Python](https://img.shields.io/badge/Lang-Python-blue?style=flat-square&logo=python)](https://python.org/)
+
+[![PyPI Downloads](https://static.pepy.tech/badge/kha256)](https://pepy.tech/projects/kha256)
+![PyPI Downloads](https://img.shields.io/pypi/dm/kha256?logo=pypi&label=PyPi%20downloads)
+
 **Performanstan Fedakarlık Edilerek Güvenlik Maksimize Edilmiş Hash Algoritması**  
 **Hash Algorithm with Security Maximized at the Sacrifice of Performance**
 
