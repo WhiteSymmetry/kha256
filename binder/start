@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Startup script for Binder
+echo "🚀 Starting KHA-256 Environment..."
+
+# Set environment variables
+export KHA_DEBUG=1
+export KHA_CACHE_ENABLED=1
+export PYTHONPATH=/kha256:$PYTHONPATH
+
+# Display welcome message
+cat << 'EOF'
+
+╔══════════════════════════════════════════════════════════╗
+║           KEÇECİ HASH ALGORİTMASI (KHA-256)              ║
+║         Security Maximized Hash Algorithm                ║
+╚══════════════════════════════════════════════════════════╝
+
+Quick Start:
+• python -m kha256 --demo           # Run demo
+• python -m kha256 --test           # Run tests
+• python -m kha256 --hash 'text'    # Hash text
+
+Examples:
+• notebooks/KHA256_Demo.ipynb        # Jupyter notebook demo
+
+Environment Info:
+EOF
+
+python --version
+python -c "import numpy; print(f'NumPy: {numpy.__version__}')"
+python -c "import kha256; print(f'KHA-256: {kha256.__version__}')"
+
+echo ""
+echo "📁 Data directory: /home/jovyan/data"
+echo "📚 Examples: notebooks"
+echo "🔧 Scripts: scripts"
+echo ""
