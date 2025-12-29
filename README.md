@@ -659,12 +659,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 ```
 
-Keçeci, M. (2025). Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256. [https://github.com/WhiteSymmetry/kha256](https://github.com/WhiteSymmetry/kha256)
+Keçeci, M. (2025). Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256. https://github.com/WhiteSymmetry/kha256
 
-Keçeci, M. (2025). Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256. [https://pypi.org/project/kha256](https://pypi.org/project/kha256)
+Keçeci, M. (2025). Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256. https://pypi.org/project/kha256
 
-Keçeci, M. (2025). Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256. [https://anaconda.org/channels/bilgi/packages/kha256/overview](https://anaconda.org/channels/bilgi/packages/kha256/overview)
+Keçeci, M. (2025). Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256. https://anaconda.org/channels/bilgi/packages/kha256/overview
 
-Keçeci, M. (2025). Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256. Zenodo. https://doi.org/10.5281/zenodo.???
+Keçeci, M. (2025). Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256. Zenodo. https://doi.org/10.5281/zenodo.18089401
 
 ---
