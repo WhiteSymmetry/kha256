@@ -1,0 +1,56 @@
+{% set version = "0.1.0" %}
+
+package:
+  name: kha256
+  version: {{ version }}
+
+source:
+  path: .  # Derlemeyi bu meta.yaml dosyasının bulunduğu dizinden yap
+  url: 
+  blake2b-256: 
+
+channels:
+  - conda-forge
+
+build:
+  noarch: python  # Platformdan bağımsız bir paket oluşturur
+  #script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed"
+  script: "{{ PYTHON }} -m pip install . -vv"
+  number: 0
+  entry_points:
+    - kha256 = kha256.__main__:main
+
+requirements:
+  host:
+    - python {{ python }}
+    - kececinumbers >=0.8.4
+    - numpy
+    - setuptools
+    # Other build tools
+  run:
+    - python >=3.10
+    - numpy
+    # Other runtime dependencies
+  build:
+    - python >=3.10
+    - pip
+    - setuptools
+    - numpy
+
+test:
+  requires:
+    - numpy
+  imports:
+    - kha256
+    - kececinumbers >=0.8.4
+    - numpy
+
+about:
+  home: https://github.com/WhiteSymmetry/kha256
+  license: AGPL-3.0
+  summary: 'Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256.'
+  description: |
+    Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256.
+  dev_url: https://github.com/WhiteSymmetry/kha256
+  doc_url: https://github.com/WhiteSymmetry/kha256
+  doc_source_url: https://github.com/WhiteSymmetry/kha256/blob/main/README.md

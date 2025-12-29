@@ -1,0 +1,96 @@
+name: Conda-Build, Test, and Publish Package
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  build-publish:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Miniconda for Python ${{ matrix.python-version }}
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-activate-base: false
+          python-version: "${{ matrix.python-version }}"
+          channels: conda-forge,defaults
+          channel-priority: strict
+
+      - name: Install Conda-Build and Conda-Verify
+        run: conda install -n base conda-build -y
+
+      - name: Build the package for Python ${{ matrix.python-version }}
+        run: |
+          export PKG_VERSION=$(git describe --tags --abbrev=0 | sed 's/^v//')
+          echo "Building version: $PKG_VERSION for Python ${{ matrix.python-version }}"
+          
+          conda build . --python ${{ matrix.python-version }} --output-folder ./dist
+          
+          if [ -z "$(ls -A dist)" ]; then
+            echo "HATA: Hiçbir conda paketi oluşturulmadı."
+            exit 1
+          fi
+          echo "Oluşturulan paket:"
+          ls -l dist
+
+      - name: Create test environment and install dependencies
+        run: |
+          conda create -n test-env -y python=${{ matrix.python-version }} numpy matplotlib scipy sympy pytest pytest-cov
+          
+          # Platforma özel quaternion kurulumu
+          if [[ "$RUNNER_OS" == "Linux" || "$RUNNER_OS" == "macOS" ]]; then
+            conda install -n test-env -y -c conda-forge quaternion
+          else
+            conda install -n test-env -y numpy-quaternion
+          fi
+
+      - name: Run development tests
+        run: |
+          conda run -n test-env --no-capture-output python -m pytest tests/ --cov=kha256
+
+      - name: Install and test the built package
+        run: |
+          PACKAGE_FILE=$(ls dist/*.conda | head -n 1)
+          conda install -n test-env -y "$PACKAGE_FILE"
+          conda run -n test-env --no-capture-output python -c "import kha256; print('Import successful for Python ${{ matrix.python-version }}!')"
+
+      - name: Debug - List files in the workspace
+        run: |
+          echo "--- Current Working Directory ---"
+          pwd
+          echo "--- Recursive file listing ---"
+          ls -R
+          echo "--- End of file listing ---"
+
+      - name: Upload to Anaconda Cloud
+        if: success()
+        env:
+          ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
+        run: |
+          PACKAGE_FILES=$(find dist -name "*.conda")
+          
+          if [ -z "$PACKAGE_FILES" ]; then
+            echo "HATA: Yüklenecek .conda dosyası bulunamadı!"
+            exit 1
+          fi
+
+          echo "Yüklenecek paketler:"
+          echo "$PACKAGE_FILES"
+          
+          conda install -n base -y anaconda-client
+          conda run -n base anaconda -t $ANACONDA_TOKEN upload \
+            $PACKAGE_FILES \
+            --label main \
+            --skip-existing
+
+      - name: Cleanup test environment
+        if: always()
+        run: conda env remove -n test-env || true

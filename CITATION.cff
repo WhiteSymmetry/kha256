@@ -1,0 +1,35 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: kha256
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file. / Eğer bu yazılımı
+  kullanıyorsanız, lütfen bu dosyadaki meta   verileri
+  kullanarak atıfta bulunun.
+type: software
+authors:
+  - given-names: Mehmet
+    family-names: Keçeci
+    email: bilginomi@yaani.com
+    orcid: 'https://orcid.org/0000-0001-9937-9839'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.***
+
+repository-code: 'https://github.com/WhiteSymmetry/kha256'
+url: 'https://github.com/WhiteSymmetry/kha256'
+repository: 'https://anaconda.org/bilgi/kha256'
+repository-artifact: 'https://pypi.org/project/kha256/'
+abstract: >-
+  Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256.
+keywords:
+  - kha256
+  - kha-256
+  - Keçeci Hash Algorithm
+  - Keçeci Hash Algoritması
+license: AGPL-3.0
+commit: 'Revision: 1'
+version: 0.1.0
+date-released: '2025-12-29'

@@ -1,0 +1,13 @@
+{
+  "title": "kha256",
+  "upload_type": "software",
+  "description": "Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256",
+  "creators": [
+    {
+      "name": "Keçeci, Mehmet",
+      "orcid": "0000-0001-9937-9839"
+    }
+  ],
+  "license": "mit-license",
+  "access_right": "open"
+}

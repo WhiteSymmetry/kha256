@@ -1,0 +1,10 @@
+numpy
+kececinumbers
+
+[test]
+pytest
+pytest-cov
+pytest-mock
+ruff
+numpy
+kececinumbers

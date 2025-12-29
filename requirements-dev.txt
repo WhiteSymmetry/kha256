@@ -1,0 +1,7 @@
+# requirements-dev.txt
+numpy
+kececinumbers
+pytest
+flake8
+pytest-cov
+
