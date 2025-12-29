@@ -121,7 +121,7 @@
     
     "environment_requirements": {
       "description": "Çalışma ortamı gereksinimleri",
-      "python": ">=3.8",
+      "python": ">=3.11",
       "memory": ">=2GB",
       "disk_space": ">=500MB",
       "cpu_cores": ">=2",
@@ -129,7 +129,7 @@
       
       "libraries": {
         "required": [
-          "numpy>=2.20.0",
+          "numpy>=2.3",
           "kececinumbers>=0.8.4"
         ],
         "optional": [
