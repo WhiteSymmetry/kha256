@@ -1,0 +1,27 @@
+{
+  "test_vectors": [
+    {
+      "input": "",
+      "description": "Empty string",
+      "expected_hash": ""
+    },
+    {
+      "input": "a",
+      "description": "Single character",
+      "expected_hash": ""
+    },
+    {
+      "input": "Hello World!",
+      "description": "Basic English text",
+      "expected_hash": ""
+    }
+  ],
+  
+  "avalanche_tests": [
+    {
+      "original": "A",
+      "modified": "B",
+      "bit_difference_expected": 128
+    }
+  ]
+}
