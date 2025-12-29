@@ -63,7 +63,7 @@ setup(
         "Intended Audience :: Science/Research",
         "Topic :: Scientific/Engineering :: Mathematics"
     ],
-    python_requires='>=3.10',
+    python_requires='>=3.11',
     license="AGPL-3.0",
     keywords="mathematics numbers hash kha kha256 kha-256 kececi",
     project_urls={
