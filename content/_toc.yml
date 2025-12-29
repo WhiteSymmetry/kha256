@@ -1,0 +1,29 @@
+# Table of Contents
+format: jb-book
+root: intro
+chapters:
+  - file: intro
+    title: "Giriş"
+  - file: installation
+    title: "Kurulum"
+  - file: usage/basic
+    title: "Temel Kullanım"
+    sections:
+      - file: usage/advanced
+        title: "Gelişmiş Kullanım"
+      - file: usage/api
+        title: "API Referansı"
+  - file: security/tests
+    title: "Güvenlik Testleri"
+    sections:
+      - file: security/avalanche
+        title: "Avalanche Etkisi"
+      - file: security/quantum
+        title: "Kuantum Direnci"
+  - file: examples/demo
+    title: "Örnekler ve Demolar"
+  - appendix:
+    - file: appendix/mathematical_bases
+      title: "Matematiksel Temeller"
+    - file: appendix/references
+      title: "Referanslar ve Kaynaklar"
