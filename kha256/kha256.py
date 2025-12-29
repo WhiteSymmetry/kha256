@@ -373,7 +373,7 @@ class FortifiedKhaCore:
                     const_name = rng.choice(const_names)
                     base_val = MathematicalSecurityBases.get_constant(const_name)
                     
-                    # Format'a göre başlangıç değeri oluştur - HATA DÜZELTMELERİ İLE
+                    # Format'a göre başlangıç değeri oluştur
                     
                     if format_type == "simple_float":
                         # Basit float sayı - EN GÜVENLİ
