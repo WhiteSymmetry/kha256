@@ -43,14 +43,7 @@ jobs:
 
       - name: Create test environment and install dependencies
         run: |
-          conda create -n test-env -y python=${{ matrix.python-version }} numpy matplotlib scipy sympy pytest pytest-cov
-          
-          # Platforma özel quaternion kurulumu
-          if [[ "$RUNNER_OS" == "Linux" || "$RUNNER_OS" == "macOS" ]]; then
-            conda install -n test-env -y -c conda-forge quaternion
-          else
-            conda install -n test-env -y numpy-quaternion
-          fi
+          conda create -n test-env -y python=${{ matrix.python-version }} numpy kececinumbers pytest pytest-cov
 
       - name: Run development tests
         run: |
