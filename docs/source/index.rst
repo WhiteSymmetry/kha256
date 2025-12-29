@@ -4,7 +4,7 @@
 Keçeci Hash Algorithm (KHA-256)
 ==================================
 
-.. image:: _static/logo.png
+.. image:: logo.png
    :alt: KHA-256 Logo
    :width: 200px
    :align: center
