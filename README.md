@@ -24,7 +24,7 @@
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/11668/badge)](https://www.bestpractices.dev/projects/11668)
 
 [![Python CI](https://github.com/WhiteSymmetry/kha256/actions/workflows/python_ci.yml/badge.svg?branch=main)](https://github.com/WhiteSymmetry/kha256/actions/workflows/python_ci.yml)
-[![codecov](https://codecov.io/gh/WhiteSymmetry/kha256/graph/badge.svg?token=???)](https://codecov.io/gh/WhiteSymmetry/kha256)
+[![codecov](https://codecov.io/gh/WhiteSymmetry/kha256/graph/badge.svg?token=DFJ046KEDT)](https://codecov.io/gh/WhiteSymmetry/kha256)
 [![Documentation Status](https://readthedocs.org/projects/kha256/badge/?version=latest)](https://kha256.readthedocs.io/en/latest/)
 [![Binder](https://terrarium.evidencepub.io/badge_logo.svg)](https://terrarium.evidencepub.io/v2/gh/WhiteSymmetry/kha256/HEAD)
 
