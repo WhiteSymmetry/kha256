@@ -1,15 +1,39 @@
-# latexmkrc
+# LaTeX compilation configuration for KHA-256 documentation
+$pdf_mode = 1;
+$postscript_mode = 0;
+$dvi_mode = 0;
 
-# LATEXOPTS tanımlı mı kontrol et, değilse boş string yap
-my $latexopts = $ENV{'LATEXOPTS'} // '';
+# Use XeLaTeX for Unicode support
+$pdflatex = 'xelatex -interaction=nonstopmode -shell-escape';
 
-$latex = 'latex ' . $latexopts . ' %O %S';
-$pdflatex = 'pdflatex ' . $latexopts . ' %O %S';
-$lualatex = 'lualatex ' . $latexopts . ' %O %S';
-$xelatex = 'xelatex --no-pdf ' . $latexopts . ' %O %S';
+# Cleanup rules
+$clean_ext = 'bbl blg aux dvi fdb_latexmk fls log nav out snm toc vrb';
 
-$makeindex = 'makeindex -s python.ist %O -o %D %S';
-add_cus_dep( "glo", "gls", 0, "makeglo" );
-sub makeglo {
-    return system( "makeindex -s gglo.ist -o '$_[0].gls' '$_[0].glo'" );
+# Max repeats
+$max_repeat = 5;
+
+# Enable synctex
+$pdf_previewer = "start evince %O %S";
+
+# Additional LaTeX options
+add_cus_dep('glo', 'gls', 0, 'makeglossaries');
+add_cus_dep('acn', 'acr', 0, 'makeglossaries');
+
+# Custom rule for glossaries
+sub makeglossaries {
+    my ($base_name, $path) = fileparse( $_[0] );
+    my @args = ( "-q", "$path$base_name" );
+    return system "makeglossaries", @args;
 }
+
+# Ensure proper compilation order
+push @generated_exts, 'glo', 'gls', 'glg';
+push @generated_exts, 'acn', 'acr', 'alg';
+push @generated_exts, 'ist', 'slg', 'slo';
+push @generated_exts, 'lof', 'lot';
+
+# Output directory
+$out_dir = '_build/latex';
+
+# Keep intermediate files for debugging
+$cleanup_includes_cusdep = 0;
