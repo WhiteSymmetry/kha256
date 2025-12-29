@@ -13,8 +13,7 @@ KHA-256'ı kullanmak için gerekli kurulum adımları.
   - Minimum
   - Önerilen
 * - Python
-  - 3.8
-  - 3.10+
+  - 3.11+
 * - RAM
   - 512MB
   - 2GB+
