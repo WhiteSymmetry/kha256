@@ -1,5 +1,5 @@
 # KHA-256 Requirements
-numpy>=2.20.0
+numpy>=2.3
 kececinumbers==0.8.4
 pandas>=1.3.0
 matplotlib>=3.4.0
