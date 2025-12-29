@@ -32,7 +32,7 @@ python -c "import numpy; print(f'NumPy: {numpy.__version__}')"
 python -c "import kha256; print(f'KHA-256: {kha256.__version__}')"
 
 echo ""
-echo "📁 Data directory: /home/jovyan/data"
+echo "📁 Data directory: data"
 echo "📚 Examples: notebooks"
 echo "🔧 Scripts: scripts"
 echo ""
