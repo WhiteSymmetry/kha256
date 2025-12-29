@@ -1,1 +1,236 @@
-data_requirement.json
+{
+  "kha256_data_requirements": {
+    "description": "Keçeci Hash Algorithm (KHA-256) için veri gereksinimleri",
+    "version": "0.1.0",
+    "author": "Mehmet Keçeci",
+    "license": "AGPL-3.0",
+    
+    "data_files": {
+      "test_data": {
+        "description": "Test ve benchmark için örnek veri dosyaları",
+        "files": [
+          {
+            "name": "test_vectors.json",
+            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/main/data/test_vectors.json",
+            "size": "~50KB",
+            "format": "json",
+            "purpose": "Doğrulama testleri için hash vektörleri"
+          },
+          {
+            "name": "benchmark_data.bin",
+            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/main/data/benchmark_data.bin",
+            "size": "~10MB",
+            "format": "binary",
+            "purpose": "Performans benchmark testleri için rastgele veri"
+          },
+          {
+            "name": "avalanche_samples.json",
+            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/main/data/avalanche_samples.json",
+            "size": "~100KB",
+            "format": "json",
+            "purpose": "Avalanche testi için örnek veri çiftleri"
+          }
+        ]
+      },
+      
+      "security_data": {
+        "description": "Güvenlik analizi için referans verileri",
+        "files": [
+          {
+            "name": "collision_reference.json",
+            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/main/data/security/collision_reference.json",
+            "size": "~200KB",
+            "format": "json",
+            "purpose": "Çakışma testleri için referans hash'ler"
+          },
+          {
+            "name": "entropy_analysis.csv",
+            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/main/data/security/entropy_analysis.csv",
+            "size": "~500KB",
+            "format": "csv",
+            "purpose": "Entropi analizi için istatistiksel veriler"
+          }
+        ]
+      },
+      
+      "mathematical_constants": {
+        "description": "KHA-256'da kullanılan matematiksel sabitler",
+        "files": [
+          {
+            "name": "mathematical_constants.json",
+            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/main/data/math/constants.json",
+            "size": "~20KB",
+            "format": "json",
+            "purpose": "Hash algoritmasında kullanılan matematiksel sabitler"
+          },
+          {
+            "name": "kececi_numbers_catalog.json",
+            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/main/data/math/kececi_numbers.json",
+            "size": "~100KB",
+            "format": "json",
+            "purpose": "Desteklenen Keçeci Sayıları türleri ve özellikleri"
+          }
+        ]
+      }
+    },
+    
+    "generated_data": {
+      "description": "Çalışma zamanında oluşturulacak veriler",
+      "scripts": [
+        {
+          "name": "generate_test_data.py",
+          "purpose": "Test vektörlerini oluştur",
+          "output_files": [
+            "data/generated/test_hashes.json",
+            "data/generated/random_samples.bin"
+          ]
+        },
+        {
+          "name": "prepare_benchmark.py",
+          "purpose": "Benchmark verilerini hazırla",
+          "output_files": [
+            "data/generated/benchmark_suite.json"
+          ]
+        }
+      ]
+    },
+    
+    "cache_requirements": {
+      "description": "Önbellek ve geçici dosya gereksinimleri",
+      "directories": [
+        {
+          "path": "data/cache/kha_matrices",
+          "purpose": "Oluşturulan KHA matrislerinin önbelleği",
+          "estimated_size": "~100MB",
+          "cleanup_policy": "session_end"
+        },
+        {
+          "path": "data/cache/hash_results",
+          "purpose": "Hesaplanan hash'lerin önbelleği",
+          "estimated_size": "~50MB",
+          "cleanup_policy": "session_end"
+        },
+        {
+          "path": "data/temp",
+          "purpose": "Geçici hesaplama dosyaları",
+          "estimated_size": "~200MB",
+          "cleanup_policy": "immediate"
+        }
+      ]
+    },
+    
+    "environment_requirements": {
+      "description": "Çalışma ortamı gereksinimleri",
+      "python": ">=3.8",
+      "memory": ">=2GB",
+      "disk_space": ">=500MB",
+      "cpu_cores": ">=2",
+      "gpu": "optional",
+      
+      "libraries": {
+        "required": [
+          "numpy>=2.20.0",
+          "kececinumbers>=0.8.4"
+        ],
+        "optional": [
+          "pandas>=1.3.0",
+          "matplotlib>=3.4.0",
+          "scipy>=1.7.0"
+        ]
+      }
+    },
+    
+    "binder_specific": {
+      "description": "Binder ortamına özel ayarlar",
+      "postBuild": [
+        "pip install -r requirements.txt",
+        "python -m kha256 --demo",
+        "mkdir -p data/{cache,temp,generated}"
+      ],
+      
+      "startup_commands": [
+        "echo 'KHA-256 Environment Initialized'",
+        "echo 'Python version: $(python --version)'",
+        "echo 'NumPy version: $(python -c \"import numpy; print(numpy.__version__)\")'"
+      ],
+      
+      "notebook_defaults": {
+        "kernel": "python3",
+        "default_notebook": "examples/KHA256_Demo.ipynb",
+        "trust_notebooks": true
+      }
+    },
+    
+    "usage_examples": {
+      "description": "Binder'da kullanım örnekleri",
+      "notebooks": [
+        {
+          "name": "KHA256_Demo.ipynb",
+          "path": "examples/KHA256_Demo.ipynb",
+          "description": "Temel hash fonksiyonlarını gösteren demo"
+        },
+        {
+          "name": "Security_Analysis.ipynb",
+          "path": "examples/Security_Analysis.ipynb",
+          "description": "Güvenlik testleri ve analizler"
+        },
+        {
+          "name": "Performance_Benchmark.ipynb",
+          "path": "examples/Performance_Benchmark.ipynb",
+          "description": "Performans benchmark testleri"
+        }
+      ],
+      
+      "scripts": [
+        {
+          "name": "quick_test.sh",
+          "path": "scripts/quick_test.sh",
+          "description": "Hızlı test çalıştırma script'i"
+        },
+        {
+          "name": "generate_report.py",
+          "path": "scripts/generate_report.py",
+          "description": "Test raporu oluşturma script'i"
+        }
+      ]
+    },
+    
+    "data_validation": {
+      "description": "Veri bütünlüğü kontrolü",
+      "checksums": {
+        "test_vectors.json": "sha256:abc123...",
+        "benchmark_data.bin": "sha256:def456...",
+        "mathematical_constants.json": "sha256:ghi789..."
+      },
+      
+      "validation_scripts": [
+        {
+          "name": "validate_data.py",
+          "purpose": "Veri dosyalarının bütünlüğünü kontrol et",
+          "command": "python scripts/validate_data.py"
+        }
+      ]
+    },
+    
+    "download_strategy": {
+      "description": "Veri indirme stratejisi",
+      "parallel_downloads": true,
+      "max_retries": 3,
+      "timeout": 300,
+      "verify_ssl": true,
+      
+      "mirrors": [
+        {
+          "name": "primary",
+          "base_url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/main/",
+          "priority": 1
+        },
+        {
+          "name": "backup",
+          "base_url": "https://cdn.jsdelivr.net/gh/WhiteSymmetry/kha256/",
+          "priority": 2
+        }
+      ]
+    }
+  }
+}
