@@ -12,7 +12,7 @@ html:
   use_edit_page_button: true
   use_repository_button: true
   repository_url: "https://github.com/WhiteSymmetry/kha256"
-  repository_branch: "main"
+  repository_branch: ""
   extra_footer: |
     <p>© 2024 Mehmet Keçeci. Bu belge AGPL-3.0 lisansı altındadır.</p>
 
