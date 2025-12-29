@@ -1,0 +1,21 @@
+#!/bin/bash
+
+echo "🚀 Setting up KHA-256 Jupyter Book environment..."
+
+# Install KHA-256
+pip install -e .
+
+# Build Jupyter Book
+cd content
+jupyter-book build .
+
+# Create symlink for easy access
+ln -s _build/html index.html
+
+# Download sample data
+mkdir -p data
+curl -o data/test_vectors.json \
+  https://raw.githubusercontent.com/WhiteSymmetry/kha256/main/data/test_vectors.json
+
+echo "✅ Setup complete!"
+echo "📚 Jupyter Book available at: _build/html/index.html"
