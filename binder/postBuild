@@ -15,7 +15,7 @@ ln -s _build/html index.html
 # Download sample data
 mkdir -p data
 curl -o data/test_vectors.json \
-  https://raw.githubusercontent.com/WhiteSymmetry/kha256/main/data/test_vectors.json
+  https://raw.githubusercontent.com/WhiteSymmetry/kha256/data/test_vectors.json
 
 echo "✅ Setup complete!"
 echo "📚 Jupyter Book available at: _build/html/index.html"
