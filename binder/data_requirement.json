@@ -11,21 +11,21 @@
         "files": [
           {
             "name": "test_vectors.json",
-            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/main/data/test_vectors.json",
+            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/data/test_vectors.json",
             "size": "~50KB",
             "format": "json",
             "purpose": "Doğrulama testleri için hash vektörleri"
           },
           {
             "name": "benchmark_data.bin",
-            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/main/data/benchmark_data.bin",
+            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/data/benchmark_data.bin",
             "size": "~10MB",
             "format": "binary",
             "purpose": "Performans benchmark testleri için rastgele veri"
           },
           {
             "name": "avalanche_samples.json",
-            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/main/data/avalanche_samples.json",
+            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/data/avalanche_samples.json",
             "size": "~100KB",
             "format": "json",
             "purpose": "Avalanche testi için örnek veri çiftleri"
@@ -38,14 +38,14 @@
         "files": [
           {
             "name": "collision_reference.json",
-            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/main/data/security/collision_reference.json",
+            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/data/security/collision_reference.json",
             "size": "~200KB",
             "format": "json",
             "purpose": "Çakışma testleri için referans hash'ler"
           },
           {
             "name": "entropy_analysis.csv",
-            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/main/data/security/entropy_analysis.csv",
+            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/data/security/entropy_analysis.csv",
             "size": "~500KB",
             "format": "csv",
             "purpose": "Entropi analizi için istatistiksel veriler"
@@ -58,14 +58,14 @@
         "files": [
           {
             "name": "mathematical_constants.json",
-            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/main/data/math/constants.json",
+            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/data/math/constants.json",
             "size": "~20KB",
             "format": "json",
             "purpose": "Hash algoritmasında kullanılan matematiksel sabitler"
           },
           {
             "name": "kececi_numbers_catalog.json",
-            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/main/data/math/kececi_numbers.json",
+            "url": "https://raw.githubusercontent.com/WhiteSymmetry/kha256/data/math/kececi_numbers.json",
             "size": "~100KB",
             "format": "json",
             "purpose": "Desteklenen Keçeci Sayıları türleri ve özellikleri"
