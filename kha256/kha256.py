@@ -146,7 +146,7 @@ except ImportError as e:
     WORKING_TYPES = list(range(1, 23))
     TYPE_NAMES = {i: f"Type_{i}" for i in range(1, 23)}
     
-    # Sahte tipler oluştur
+    # Genel tipler oluştur
     TYPE_POSITIVE_REAL = 1
     TYPE_NEGATIVE_REAL = 2
     TYPE_COMPLEX = 3
