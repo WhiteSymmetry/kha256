@@ -31,8 +31,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-#quaternion-conda = ["quaternion"]
-test = ["pytest", "pytest-cov", "pytest-mock", "ruff", "numpy", "kececinumbers",]
+test = ["pytest", "pytest-cov", "pytest-mock", "ruff"]
 
 [tool.setuptools.packages.find]
 where = ["."]
