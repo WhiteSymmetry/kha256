@@ -26,8 +26,6 @@ def get_install_requires():
         "kececinumbers",
     ]
 
-
-
 setup(
     name="kha256",
     version=get_version(),
