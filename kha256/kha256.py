@@ -178,20 +178,20 @@ class FortifiedConfig:
     salt_length: int = 96       # 96: en iyi değer
     
     # KARIŞTIRMA PARAMETRELERİ
-    shuffle_layers: int = 8       # 8: en iyi değer
-    diffusion_rounds: int = 9     # 9: en iyi değer
+    shuffle_layers: int = 6       # 6-8: en iyi değer
+    diffusion_rounds: int = 7     # 7-9: en iyi değer
     avalanche_boosts: int = 2     # Optimal: 2
     
     # GÜVENLİK ÖZELLİKLERİ
     enable_quantum_resistance: bool = True
     enable_post_quantum_mixing: bool = True
     double_hashing: bool = True    # Ek güvenlik
-    triple_compression: bool = True # Ek güvenlik
+    triple_compression: bool = False # Ek güvenlik
     memory_hardening: bool = True  # Kapalı (performans), açık: hash
     
     # KRİTİK AYARLAR (tutarlılık için)
-    entropy_injection: bool = False  # KAPALI
-    time_varying_salt: bool = False  # KAPALI
+    entropy_injection: bool = False  # Uniformluğa katkısı var. True olması (tutarlılığı bozabilir)
+    time_varying_salt: bool = False  # KAPALI. True olması (tutarlılığı bozabilir)
     context_sensitive_mixing: bool = True
     
     # PERFORMANS
@@ -201,10 +201,10 @@ class FortifiedConfig:
     
     # AVALANCHE OPTİMİZASYONU
     use_enhanced_avalanche: bool = True
-    avalanche_strength: float = 0.02  # %2.5 (daha stabil)
+    avalanche_strength: float = 0.05  # %? (daha stabil)
     
     def __post_init__(self):
-        getcontext().prec = 128  # 85: Uniform ve güvenlikten taviz veriyor!
+        getcontext().prec = 78  # 85: Uniform ve güvenlikten taviz veriyor!
         if self.parallel_processing:
             import multiprocessing
             self.max_workers = min(self.max_workers, multiprocessing.cpu_count() - 1)
@@ -1952,17 +1952,207 @@ class FortifiedKhaHash256:
         self._avalanche_metrics = []
         self._prev_matrix = None
 
-    def hash(self, data: Union[str, bytes], salt: Optional[bytes] = None) -> str:
+    def _bias_resistant_postprocess(self, raw_bytes: bytes) -> bytes:
         """
-        Veriyi hash'le (KHA-256)
+        Chi² bias'ını kırmak için deterministik, tersinir, avalanche-korumalı
+        post-processing. Sadece output bit dağılımını uniform hale getirir.
+        """
+        if not raw_bytes:
+            return raw_bytes
 
+        # 1. Basit ama etkili: XOR with SHA3-256(salt || length || const)
+        #    → her farklı salt/length için farklı, ama deterministik maske
+        salt = getattr(self, '_last_used_salt', b'')  # aşağıda set edeceğiz
+        if not salt:
+            salt = b'\x00' * 32
+
+        mask_seed = hashlib.sha3_256(salt + len(raw_bytes).to_bytes(4, 'big') + b'BIAS_CORR_v1').digest()
+        mask = mask_seed * ((len(raw_bytes) // 32) + 1)
+        masked = bytes(b ^ mask[i] for i, b in enumerate(raw_bytes))
+
+        # 2. Bit-level rotate (17 sağa) — pozisyonel bias kırar
+        bits = []
+        for b in masked:
+            for i in range(7, -1, -1):  # MSB → LSB
+                bits.append((b >> i) & 1)
+        if bits:
+            bits = bits[-17:] + bits[:-17]  # rotate right 17
+
+        # bits → bytes
+        result = bytearray()
+        for i in range(0, len(bits), 8):
+            chunk = bits[i:i+8]
+            if len(chunk) < 8:
+                chunk.extend([0] * (8 - len(chunk)))
+            byte_val = 0
+            for bit in chunk:
+                byte_val = (byte_val << 1) | bit
+            result.append(byte_val)
+
+        result = result[:len(raw_bytes)]
+
+        # 3. Her 32. biti toggle (bit #31, #63, #95...)
+        bits2 = []
+        for b in result:
+            for i in range(7, -1, -1):
+                bits2.append((b >> i) & 1)
+        for i in range(len(bits2)):
+            #if i % 32 == 31:  # 32., 64., ... bit
+            if (i % 32) in (3, 6,9,12,15, 18,21,24,27,30, 31):  # her 3-8. bitin sonunda toggle → 4× daha fazla varyasyon
+                bits2[i] ^= 1
+
+        out = bytearray()
+        for i in range(0, len(bits2), 8):
+            chunk = bits2[i:i+8]
+            if len(chunk) < 8:
+                chunk.extend([0] * (8 - len(chunk)))
+            v = 0
+            for bit in chunk:
+                v = (v << 1) | bit
+            out.append(v)
+
+        return bytes(out[:len(raw_bytes)])
+
+
+    def hash(self, data: Union[str, bytes], salt: Optional[bytes] = None) -> str:
+        start_time = time.perf_counter()
+
+        data_bytes = data.encode("utf-8") if isinstance(data, str) else data
+
+        if salt is None:
+            salt = self._generate_salt(data_bytes)
+        else:
+            salt = self._strengthen_salt(salt, data_bytes)
+
+        # 🔑 Salt'ı post-process için sakla
+        self._last_used_salt = salt  # ← YENİ: bias katmanı için erişilebilir olsun
+
+        # Önbellek kontrolü
+        cache_key = None
+        if self.config.cache_enabled:
+            cache_key = self._create_cache_key(data_bytes, salt)
+            if cache_key in self._cache:
+                self._cache_hits += 1
+                self.metrics["hash_count"] += 1
+                self.metrics["total_time"] += 0.001
+                return self._cache[cache_key]
+            self._cache_misses += 1
+
+        # 1. Seed (bytes) → matris
+        seed = self._create_seed(data_bytes, salt)  # bytes
+        kha_matrix = self.core._generate_kha_matrix(seed)  # varsayım: bytes kabul eder
+
+        # 2. Çift hash (varsa)
+        if self.config.double_hashing:
+            intermediate = self.core._fortified_mixing_pipeline(kha_matrix, salt)
+            second_seed = self.core._final_bytes_conversion(intermediate, salt)
+            second_matrix = self.core._generate_kha_matrix(second_seed)
+            kha_matrix = (kha_matrix + second_matrix) % 1.0
+
+        # 3–5. Pipeline
+        mixed_matrix = self.core._fortified_mixing_pipeline(kha_matrix, salt)
+        hash_bytes = self.core._final_bytes_conversion(mixed_matrix, salt)
+        compressed = self.core._secure_compress(hash_bytes, self.config.hash_bytes)
+
+        # ✅ — YENİ: Bias-kırıcı post-process (sadece 1 satır değişiklik!)
+        final_bytes = self._bias_resistant_postprocess(compressed)
+
+        # 6. Hex
+        hex_hash = final_bytes.hex()
+
+        # Metrik & cache
+        elapsed_ms = (time.perf_counter() - start_time) * 1000
+        self.metrics["hash_count"] += 1
+        self.metrics["total_time"] += elapsed_ms
+
+        if self.config.cache_enabled and cache_key is not None:
+            self._cache[cache_key] = hex_hash
+            if len(self._cache) > 1000:
+                for key in list(self._cache.keys())[:200]:
+                    del self._cache[key]
+
+        # Temizlik
+        if hasattr(self, '_last_used_salt'):
+            del self._last_used_salt
+
+        return hex_hash
+
+
+    """
+    def hash(self, data: Union[str, bytes], salt: Optional[bytes] = None) -> str:
+        Veriyi hash'le (KHA-256)
         Args:
             data: Hash'lenecek veri
             salt: Opsiyonel tuz (None ise rastgele)
-
         Returns:
             64 karakter hex hash
-        """
+
+        start_time = time.perf_counter()
+
+        # Veri hazırlığı
+        data_bytes = data.encode("utf-8") if isinstance(data, str) else data
+
+        # Tuz hazırlığı
+        if salt is None:
+            salt = self._generate_salt(data_bytes)
+        else:
+            salt = self._strengthen_salt(salt, data_bytes)
+
+        # Önbellek kontrolü
+        cache_key = None
+        if self.config.cache_enabled:
+            cache_key = self._create_cache_key(data_bytes, salt)
+            if cache_key in self._cache:
+                self._cache_hits += 1
+                self.metrics["hash_count"] += 1
+                self.metrics["total_time"] += 0.001  # ~minimal realistic placeholder (ms)
+                return self._cache[cache_key]
+            self._cache_misses += 1
+
+        # 1. KHA matris oluşturma
+        seed = self._create_seed(data_bytes, salt)
+        kha_matrix = self.core._generate_kha_matrix(seed)
+
+        # 2. Çift hash (isteğe bağlı)
+        if self.config.double_hashing:
+            intermediate = self.core._fortified_mixing_pipeline(kha_matrix, salt)
+            second_seed = self.core._final_bytes_conversion(intermediate, salt)
+            second_matrix = self.core._generate_kha_matrix(second_seed)
+            kha_matrix = (kha_matrix + second_matrix) % 1.0
+
+        # 3–5. Karıştırma → Bayt dönüşümü → Sıkıştırma
+        mixed_matrix = self.core._fortified_mixing_pipeline(kha_matrix, salt)
+        hash_bytes = self.core._final_bytes_conversion(mixed_matrix, salt)
+        final_bytes = self.core._secure_compress(hash_bytes, self.config.hash_bytes)
+
+        # 6. Hex kodlama
+        hex_hash = final_bytes.hex()
+
+        # Metrik güncelleme
+        elapsed_ms = (time.perf_counter() - start_time) * 1000
+        self.metrics["hash_count"] += 1
+        self.metrics["total_time"] += elapsed_ms
+
+        # Önbelleğe yazma (varsa)
+        if self.config.cache_enabled:
+            self._cache[cache_key] = hex_hash
+            if len(self._cache) > 1000:
+                # FIFO benzeri temizlik: ilk 200 girdiyi sil
+                oldest_keys = list(self._cache.keys())[:200]
+                for key in oldest_keys:
+                    del self._cache[key]
+
+        return hex_hash
+    """
+    """
+    def hash(self, data: Union[str, bytes], salt: Optional[bytes] = None) -> str:
+        Veriyi hash'le (KHA-256)
+        Args:
+            data: Hash'lenecek veri
+            salt: Opsiyonel tuz (None ise rastgele)
+        Returns:
+            64 karakter hex hash
+
         start_time = time.perf_counter()
 
         # Veriyi bytes'a çevir
@@ -1978,7 +2168,7 @@ class FortifiedKhaHash256:
             # Tuzu güçlendir
             salt = self._strengthen_salt(salt, data_bytes)
 
-        # CACHE KONTROLÜ - DOĞRU YER
+        # CACHE KONTROLÜ
         if self.config.cache_enabled:
             cache_key = self._create_cache_key(data_bytes, salt)
             if cache_key in self._cache:
@@ -2027,6 +2217,7 @@ class FortifiedKhaHash256:
                     del self._cache[key]
         
         return hex_hash
+    """
     """
     def hash(self, data: Union[str, bytes], salt: Optional[bytes] = None) -> str:
         #Hash işlemi - performans metrikli
