@@ -146,7 +146,7 @@ except ImportError as e:
     WORKING_TYPES = list(range(1, 23))
     TYPE_NAMES = {i: f"Type_{i}" for i in range(1, 23)}
     
-    # Genel tipler oluştur
+    # Sahte tipler oluştur
     TYPE_POSITIVE_REAL = 1
     TYPE_NEGATIVE_REAL = 2
     TYPE_COMPLEX = 3
@@ -165,42 +165,99 @@ except ImportError as e:
 # ============================================================
 @dataclass
 class FortifiedConfig:
-    """Güçlendirilmiş KHA Hash Konfigürasyonu"""
+    """OPTİMİZE EDİLMİŞ KHA Hash Konfigürasyonu"""
+    
+    # Çıktı boyutu
+    output_bits: int = 256
+    hash_bytes: int = 32
+    
+    # GÜVENLİK PARAMETRELERİ (OPTİMUM)
+    iterations: int = 4           # Optimal: 4 (performans/güvenlik dengesi)
+    rounds: int = 2               # Optimal: 2
+    components_per_hash: int = 8  # Optimal: 8
+    salt_length: int = 96       # 96: en iyi değer
+    
+    # KARIŞTIRMA PARAMETRELERİ
+    shuffle_layers: int = 8       # 8: en iyi değer
+    diffusion_rounds: int = 9     # 9: en iyi değer
+    avalanche_boosts: int = 2     # Optimal: 2
+    
+    # GÜVENLİK ÖZELLİKLERİ
+    enable_quantum_resistance: bool = True
+    enable_post_quantum_mixing: bool = True
+    double_hashing: bool = True    # Ek güvenlik
+    triple_compression: bool = True # Ek güvenlik
+    memory_hardening: bool = True  # Kapalı (performans), açık: hash
+    
+    # KRİTİK AYARLAR (tutarlılık için)
+    entropy_injection: bool = False  # KAPALI
+    time_varying_salt: bool = False  # KAPALI
+    context_sensitive_mixing: bool = True
+    
+    # PERFORMANS
+    cache_enabled: bool = True
+    parallel_processing: bool = True
+    max_workers: int = 8  # 12'den 8'e (daha stabil)
+    
+    # AVALANCHE OPTİMİZASYONU
+    use_enhanced_avalanche: bool = True
+    avalanche_strength: float = 0.02  # %2.5 (daha stabil)
+    
+    def __post_init__(self):
+        getcontext().prec = 100  # 85: Uniform ve güvenlikten taviz veriyor!
+        if self.parallel_processing:
+            import multiprocessing
+            self.max_workers = min(self.max_workers, multiprocessing.cpu_count() - 1)
+"""
+# Aldığım en iyi sonuçlar
+@dataclass
+class FortifiedConfig:
+    #Güçlendirilmiş KHA Hash Konfigürasyonu
 
     # Çıktı boyutu
     output_bits: int = 256
     hash_bytes: int = 32  # 256-bit
 
     # Güvenlik parametreleri (artırılmış)
-    iterations: int = 16  # 12'den 16'ya
-    rounds: int = 8  # Her iterasyon için tur sayısı
-    components_per_hash: int = 20  # 16'dan 20'ye
+    iterations: int = 4  # 12'den 16'ya: 4-16
+    rounds: int = 2  # Her iterasyon için tur sayısı: 2-8
+    components_per_hash: int = 8  # 16'dan 20'ye: 8-20
     salt_length: int = 96  # 64'ten 96'ya
 
     # Karıştırma parametreleri (artırılmış)
-    shuffle_layers: int = 12  # 8'den 12'ye
-    diffusion_rounds: int = 9  # 6'dan 9'a
-    avalanche_boosts: int = 6  # Avalanche artırıcılar
+    shuffle_layers: int = 8  # 8: en iyi sonuç. Toplam süreyi etkiliyor
+    diffusion_rounds: int = 9  # 9: en iyi sonuç. Toplam süreyi etkiliyor
+    avalanche_boosts: int = 2  # Avalanche artırıcılar: 2-6
 
     # Güvenlik özellikleri
     enable_quantum_resistance: bool = True
     enable_post_quantum_mixing: bool = True
-    double_hashing: bool = True
+    double_hashing: bool = True # Kapalı (performans)
     triple_compression: bool = True
     memory_hardening: bool = True
 
     # Ek güvenlik
-    entropy_injection: bool = True
-    time_varying_salt: bool = True
+    entropy_injection: bool = False # Aynı girdi farklı hash üretiyor. Zaman bazlı entropy veya rastgelelik enjekte ediliyor. FortifiedConfig'da time_varying_salt=False ve entropy_injection=False yap
+    time_varying_salt: bool = False # 
     context_sensitive_mixing: bool = True
 
     # Performans (fedakarlık)
-    cache_enabled: bool = False  # Cache kapatıldı
-    parallel_processing: bool = False  # Seri işlem
+    cache_enabled: bool = True  # (performans için)
+    parallel_processing: bool = True  # Seri işlemi True kullandım
+    max_workers: int = 12 # Paralel işçi sayısı
+
+    # AVALANCHE OPTİMİZASYONU
+    use_enhanced_avalanche: bool = True  # Gelişmiş avalanche
+    avalanche_strength: float = 0.03     # Pertürbasyon gücü (%3)
 
     def __post_init__(self):
-        # Hassas hesaplar için yüksek hassasiyet
+        # Hassas hesaplar için yüksek hassasiyet. Optimal: 78-bit hassasiyet
         getcontext().prec = 100
+        if self.parallel_processing:
+            # Paralel işlem için ayarlar
+            import multiprocessing
+            self.max_workers = min(self.max_workers, multiprocessing.cpu_count() - 1)
+"""
 
 # ============================================================
 # MATEMATİKSEL GÜVENLİK TABANLARI
@@ -373,7 +430,7 @@ class FortifiedKhaCore:
                     const_name = rng.choice(const_names)
                     base_val = MathematicalSecurityBases.get_constant(const_name)
                     
-                    # Format'a göre başlangıç değeri oluştur
+                    # Format'a göre başlangıç değeri oluştur - HATA DÜZELTMELERİ İLE
                     
                     if format_type == "simple_float":
                         # Basit float sayı - EN GÜVENLİ
@@ -869,9 +926,49 @@ class FortifiedKhaCore:
                 result = (result + noise) % 1.0
         
         return result
-    
+
     def _high_diffusion_transform(self, matrix: np.ndarray, layer: int, salt: bytes) -> np.ndarray:
-        """Yüksek difüzyon dönüşümü"""
+        # Optimize edilmiş difüzyon
+        n = len(matrix)
+        result = matrix.copy()
+        
+        # Daha etkili difüzyon faktörleri
+        diffusion_factors = [
+            1.618033988749895,  # φ
+            2.414213562373095,  # δ_s
+            1.324717957244746,  # ψ
+            3.141592653589793,  # π
+        ]
+        
+        for diff_round in range(self.config.diffusion_rounds):
+            # İleri difüzyon
+            for i in range(1, n):
+                factor_idx = (i + diff_round + layer) % len(diffusion_factors)
+                factor = diffusion_factors[factor_idx]
+                result[i] = (result[i] + result[i-1] * factor) % 1.0
+            
+            # Geri difüzyon  
+            for i in range(n-2, -1, -1):
+                factor_idx = (i + diff_round) % len(diffusion_factors)
+                factor = 1.0 / diffusion_factors[factor_idx]
+                result[i] = (result[i] + result[i+1] * factor) % 1.0
+            
+            # Çapraz mixing (daha sık)
+            if n > 4 and diff_round % 2 == 0:
+                step = n // 8 if n >= 16 else 2
+                for i in range(0, n - step, step):
+                    j = i + step
+                    if j < n:
+                        # Non-linear mixing
+                        avg = (result[i] + result[j]) / 2.0
+                        result[i] = (result[i] * 0.7 + avg * 0.3) % 1.0
+                        result[j] = (result[j] * 0.7 + avg * 0.3) % 1.0
+        
+        return result
+
+    """
+    def _high_diffusion_transform(self, matrix: np.ndarray, layer: int, salt: bytes) -> np.ndarray:
+        # Yüksek difüzyon dönüşümü: performansı ve avalacheyi düşürüyor
         n = len(matrix)
         result = matrix.copy()
         
@@ -916,6 +1013,7 @@ class FortifiedKhaCore:
                                        np.sin(result[p] * np.pi) * 0.1) % 1.0
         
         return result
+    """
     
     def _complex_permutation(self, matrix: np.ndarray, layer: int, salt: bytes) -> np.ndarray:
         """Karmaşık permütasyon"""
@@ -969,9 +1067,369 @@ class FortifiedKhaCore:
         result = (result1 + result2 + result3) / 3.0
         
         return result
-    
+
+    """
     def _enhanced_avalanche_boost(self, matrix: np.ndarray, layer: int, salt: bytes) -> np.ndarray:
-        """Gelişmiş avalanche boost"""
+        #EN BAŞARILI VERSİYON (129, 132, 128, 131 veren): genel düşüüş var
+        
+        # BU KESİNLİKLE ÇALIŞTIĞINI BİLDİĞİMİZ VERSİYON
+        result = matrix.copy()
+        n = len(result)
+        
+        # SADECE 3 SABİT (daha az karmaşık)
+        constants = [
+            1.618033988749895,  # φ
+            3.141592653589793,  # π  
+            2.718281828459045,  # e
+        ]
+        
+        const_idx = layer % len(constants)
+        const1 = constants[const_idx]
+        const2 = constants[(const_idx + 1) % len(constants)]
+        
+        # 3 BASİT KATMAN (fazla değil)
+        result = np.sin(result * np.pi * const1)
+        result = np.tanh(result * const2 * 0.8)  # DAHA HAFİF: 0.8
+        result = 1.0 / (1.0 + np.exp(-result * 2.0 + 1.0))  # DAHA HAFİF
+        
+        # MİNİMAL PERTÜRBASYON
+        if len(salt) >= 4:
+            salt_int = int.from_bytes(salt[:4], "big")
+            rng = np.random.RandomState(salt_int + layer)
+            perturbation = rng.randn(n) * 0.008  # ÇOK AZ: %0.8
+            result = (result + perturbation) % 1.0
+        
+        # BASİT CLIP
+        return np.clip(result, 0.0, 1.0)
+    """
+    """
+    def _enhanced_avalanche_boost(self, matrix: np.ndarray, layer: int, salt: bytes) -> np.ndarray:
+        #Eski başarılı + 'benzer stringler' için optimizasyon: ortak fark: mükemmel fakat diğerleri düştü
+        
+        # 1. ESKİ MÜKEMMEL VERSİYON
+        result = matrix.copy()
+        n = len(result)
+        
+        constants = [1.618033988749895, 3.141592653589793, 2.718281828459045]
+        const_idx = layer % len(constants)
+        const1 = constants[const_idx]
+        const2 = constants[(const_idx + 1) % len(constants)]
+        
+        result = np.sin(result * np.pi * const1)
+        result = np.tanh(result * const2)
+        result = 1.0 / (1.0 + np.exp(-result * 2.5 + 1.25))
+        
+        # 2. "BENZER STRING" DETECT ve OPTİMİZE
+        # Eğer matrix çok uniform/düz ise (benzer inputlarda olur)
+        matrix_std = np.std(matrix)
+        if matrix_std < 0.05:  # Çok uniform matrix (benzer inputlar)
+            # Ek non-lineer karıştırma
+            for i in range(0, n-1, 2):
+                # XOR-benzeri mixing
+                a, b = result[i], result[i+1]
+                result[i] = (a * 0.6 + b * 0.4 + np.sin(a * np.pi) * 0.2) % 1.0
+                result[i+1] = (b * 0.6 + a * 0.4 + np.cos(b * np.pi) * 0.2) % 1.0
+        
+        # 3. HAFİF PERTÜRBASYON
+        if len(salt) >= 4:
+            salt_int = int.from_bytes(salt[:4], "big")
+            rng = np.random.RandomState(salt_int + layer)
+            perturbation = rng.randn(n) * 0.01  # DAHA AZ: %1
+            result = (result + perturbation) % 1.0
+        
+        return np.clip(result, 0.0, 1.0)
+    """
+
+    """ 
+    def _enhanced_avalanche_boost(self, matrix: np.ndarray, layer: int, salt: bytes) -> np.ndarray:
+        # Optimize edilmiş avalanche boost - Basit ve etkili versiyon: Ortak fark: iyi, ilk karakter: iyi!
+        
+        # 1. ORİJİNAL MATRİSİ KORU (önceki başarılı versiyon temeli)
+        result = matrix.copy()
+        n = len(result)
+        
+        # 2. TEMEL MATEMATİKSEL SABİTLER (sadece 3 tane)
+        constants = [
+            1.618033988749895,  # φ - Altın oran (birincil)
+            3.141592653589793,  # π - Pi (ikincil)
+            2.718281828459045,  # e - Euler (üçüncül)
+        ]
+        
+        # 3. ÇOK BASİT 3-KATMAN DÖNÜŞÜM
+        # Katman 1: Sinüs (birincil)
+        const1 = constants[layer % len(constants)]
+        result = np.sin(result * np.pi * const1)
+        
+        # Katman 2: Tanh (ikincil - hafif)
+        const2 = constants[(layer + 1) % len(constants)]
+        result = np.tanh(result * const2 * 0.5)  # Yarı güç
+        
+        # Katman 3: Hafif sigmoid (çok hafif)
+        result = 1.0 / (1.0 + np.exp(-result * 1.5 + 0.75))
+        
+        # 4. MİNİMAL PERTÜRBASYON (sadece %1)
+        if len(salt) >= 4:
+            salt_int = int.from_bytes(salt[:4], "big")
+            rng = np.random.RandomState(salt_int + layer)
+            perturbation = rng.randn(n) * 0.01  # SADECE %1
+            result = (result + perturbation) % 1.0
+        
+        # 5. SADECE 1 EK NON-LİNEERLİK (orijinal başarıyı korumak için)
+        # Sadece çok düşük/çok yüksek değerler için
+        for i in range(n):
+            val = result[i]
+            if val < 0.2:  # Çok düşük
+                result[i] = np.sqrt(val + 0.01)  # Hafif yükselt
+            elif val > 0.8:  # Çok yüksek
+                result[i] = val * val  # Hafif düşür
+        
+        # 6. NORMALİZASYON (basit)
+        min_val = np.min(result)
+        max_val = np.max(result)
+        if max_val - min_val > 0.0001:
+            result = (result - min_val) / (max_val - min_val)
+        
+        # 7. SON SİNÜS (çok hafif)
+        result = np.sin(result * np.pi * 1.01)  # Neredeyse 1.0
+        
+        return np.clip(result, 0.0, 1.0)
+    """
+
+    """
+    def _enhanced_avalanche_boost(self, matrix: np.ndarray, layer: int, salt: bytes) -> np.ndarray:
+        #Optimize edilmiş avalanche boost - 'Orta fark: mükemmel  fakat 3 orta var!
+        
+        # ORİJİNAL MÜKEMMEL VERSİYON (diğer 4 test için)
+        result = matrix.copy()
+        n = len(result)
+        
+        # 1. GÜÇLÜ MATEMATİKSEL SABİTLER
+        constants = [
+            1.618033988749895,  # Altın oran
+            2.414213562373095,  # Gümüş oran  
+            3.141592653589793,  # Pi
+            2.718281828459045,  # e
+            1.324717957244746,  # Plastik sayı
+        ]
+        
+        # Layer'a göre sabit seç
+        const_idx = layer % len(constants)
+        const1 = constants[const_idx]
+        const2 = constants[(const_idx + 1) % len(constants)]
+        
+        # 2. ÇOK KATMANLI NON-LİNEER DÖNÜŞÜM
+        # Katman 1: Sinüs + matematiksel sabit
+        result = np.sin(result * np.pi * const1)
+        
+        # Katman 2: Tanh
+        result = np.tanh(result * const2)
+        
+        # Katman 3: Logistik fonksiyon (sigmoid)
+        result = 1.0 / (1.0 + np.exp(-result * 2.5 + 1.25))
+        
+        # 3. "ORTA FARK" TESTİ İÇİN ÖZEL İYİLEŞTİRME
+        # 'Merhaba123' vs 'Merhaba456' problemi: Bu iki string çok benzer
+        # Sadece çok uniform matrisler için ek işlem
+        matrix_uniformity = np.std(matrix)  # Standart sapma
+        
+        if matrix_uniformity < 0.08:  # Çok uniform ise (benzer inputlar)
+            # Ek non-lineer karıştırma - ÇOK HAFİF
+            for i in range(n):
+                val = result[i]
+                # Sadece çok orta değerler için
+                if 0.45 < val < 0.55:
+                    # Küçük bir sinusoidal perturbasyon
+                    phase = (i * 0.2 + layer * 0.1) * np.pi
+                    extra = np.sin(phase) * 0.025  # SADECE %2.5
+                    result[i] = (val + extra) % 1.0
+                
+                # Çapraz mixing ekle (her 4 elementte bir)
+                if i % 4 == 0 and i + 3 < n:
+                    # Dörtlü karıştırma
+                    a, b, c, d = result[i], result[i+1], result[i+2], result[i+3]
+                    avg = (a + b + c + d) / 4.0
+                    # Çok hafif mixing
+                    mix_strength = 0.15  # SADECE %15
+                    result[i] = a * (1 - mix_strength) + avg * mix_strength
+                    result[i+1] = b * (1 - mix_strength) + avg * mix_strength
+                    result[i+2] = c * (1 - mix_strength) + avg * mix_strength
+                    result[i+3] = d * (1 - mix_strength) + avg * mix_strength
+        
+        # 4. KONTROLLÜ PERTÜRBASYON (salt bazlı) - BİRAZ AZALT
+        if len(salt) >= 4:
+            salt_int = int.from_bytes(salt[:4], "big")
+            rng = np.random.RandomState(salt_int + layer)
+            
+            # Optimize edilmiş pertürbasyon (%1.2 - biraz azalt)
+            perturbation = rng.randn(n) * 0.012  # %1.5'tan %1.2'ye
+            result = (result + perturbation) % 1.0
+        
+        # 5. FINAL NORMALİZASYON ve HAFİF NON-LİNEERLİK
+        # Çok uç değerler için hafif düzeltme
+        for i in range(n):
+            val = result[i]
+            if val < 0.1:
+                result[i] = np.sqrt(val + 0.01)  # Çok düşükleri yükselt
+            elif val > 0.9:
+                result[i] = 1.0 - np.sqrt(1.0 - val + 0.01)  # Çok yüksekleri düşür
+        
+        # 6. SON NORMALİZASYON
+        min_val = np.min(result)
+        max_val = np.max(result)
+        if max_val - min_val > 0.0001:
+            result = (result - min_val) / (max_val - min_val)
+        
+        return np.clip(result, 0.0, 1.0)
+    """
+
+    """
+    def _enhanced_avalanche_boost(self, matrix: np.ndarray, layer: int, salt: bytes) -> np.ndarray:
+       #Orta fark: mükemmel diğerleri düşük!
+        
+        # 1. ORİJİNAL MÜKEMMEL VERSİYON
+        result = matrix.copy()
+        n = len(result)
+        
+        constants = [
+            1.618033988749895,  # Altın oran
+            3.141592653589793,  # Pi
+            2.718281828459045,  # e
+        ]
+        
+        const_idx = layer % len(constants)
+        const1 = constants[const_idx]
+        const2 = constants[(const_idx + 1) % len(constants)]
+        
+        result = np.sin(result * np.pi * const1)
+        result = np.tanh(result * const2)
+        result = 1.0 / (1.0 + np.exp(-result * 2.5 + 1.25))
+        
+        # 2. "BENZER STRINGLER" DETECT SİSTEMİ
+        # Eğer input çok benzer stringlerse, ek işlem yap
+        # Bunu matrix'in varyansından anlayabiliriz
+        input_variance = np.var(matrix)
+        
+        if input_variance < 0.02:  # Çok düşük varyans = benzer inputlar
+            # 'Merhaba123' vs 'Merhaba456' benzerliği için özel iyileştirme
+            # Bu tür benzerliklerde matrix değerleri çok yakın olur
+            
+            # Çözüm: Daha güçlü non-lineer dönüşüm ekle
+            for i in range(n):
+                val = result[i]
+                
+                # Çok yakın komşu değerler varsa, farkı artır
+                if i > 0 and abs(val - result[i-1]) < 0.05:
+                    # Küçük bir fark ekle
+                    diff = np.sin(i * 0.3 + layer * 0.2) * 0.08
+                    result[i] = (val + diff) % 1.0
+                
+                # Orta değerleri biraz yay
+                if 0.4 < val < 0.6:
+                    # Merkezden uzaklaştır
+                    from_center = val - 0.5
+                    push = from_center * 1.2  # %20 daha uzağa it
+                    result[i] = 0.5 + push
+        
+        # 3. NORMAL PERTÜRBASYON (biraz daha az)
+        if len(salt) >= 4:
+            salt_int = int.from_bytes(salt[:4], "big")
+            rng = np.random.RandomState(salt_int + layer)
+            perturbation = rng.randn(n) * 0.01  # %1.0
+            result = (result + perturbation) % 1.0
+        
+        return np.clip(result, 0.0, 1.0)
+    """
+    """
+    def _enhanced_avalanche_boost(self, matrix: np.ndarray, layer: int, salt: bytes) -> np.ndarray:
+        #ORİJİNAL MÜKEMMEL VERSİYON (129, 132, 128, 131 veren): Baze: Uniform değil (χ²=192.0)
+        result = matrix.copy()
+        n = len(result)
+        
+        # 1. GÜÇLÜ MATEMATİKSEL SABİTLER
+        constants = [
+            1.618033988749895,  # Altın oran
+            2.414213562373095,  # Gümüş oran  
+            3.141592653589793,  # Pi
+            2.718281828459045,  # e
+            1.324717957244746,  # Plastik sayı
+        ]
+        
+        # Layer'a göre sabit seç
+        const_idx = layer % len(constants)
+        const1 = constants[const_idx]
+        const2 = constants[(const_idx + 1) % len(constants)]
+        
+        # 2. ÇOK KATMANLI NON-LİNEER DÖNÜŞÜM
+        # Katman 1: Sinüs + matematiksel sabit
+        result = np.sin(result * np.pi * const1)
+        
+        # Katman 2: Tanh
+        result = np.tanh(result * const2)
+        
+        # Katman 3: Logistik fonksiyon (sigmoid)
+        result = 1.0 / (1.0 + np.exp(-result * 2.5 + 1.25))
+        
+        # 3. KONTROLLÜ PERTÜRBASYON (salt bazlı)
+        if len(salt) >= 4:
+            salt_int = int.from_bytes(salt[:4], "big")
+            rng = np.random.RandomState(salt_int + layer)
+            
+            # Optimize edilmiş pertürbasyon (%1.5)
+            perturbation = rng.randn(n) * 0.015
+            result = (result + perturbation) % 1.0
+        
+        # 4. FINAL NORMALİZASYON
+        result = np.clip(result, 0.0, 1.0)
+        
+        return result
+    """
+
+    def _enhanced_avalanche_boost(self, matrix: np.ndarray, layer: int, salt: bytes) -> np.ndarray:
+        # Optimize edilmiş avalanche boost: orta fark: orta! diğerleri mükemmel
+        result = matrix.copy()
+        n = len(result)
+        
+        # 1. GÜÇLÜ MATEMATİKSEL SABİTLER
+        constants = [
+            1.618033988749895,  # Altın oran
+            2.414213562373095,  # Gümüş oran  
+            3.141592653589793,  # Pi
+            2.718281828459045,  # e
+            1.324717957244746,  # Plastik sayı
+        ]
+        
+        # Layer'a göre sabit seç
+        const_idx = layer % len(constants)
+        const1 = constants[const_idx]
+        const2 = constants[(const_idx + 1) % len(constants)]
+        
+        # 2. ÇOK KATMANLI NON-LİNEER DÖNÜŞÜM
+        # Katman 1: Sinüs + matematiksel sabit
+        result = np.sin(result * np.pi * const1)
+        
+        # Katman 2: Tanh
+        result = np.tanh(result * const2)
+        
+        # Katman 3: Logistik fonksiyon (sigmoid)
+        result = 1.0 / (1.0 + np.exp(-result * 2.5 + 1.25))
+        
+        # 3. KONTROLLÜ PERTÜRBASYON (salt bazlı)
+        if len(salt) >= 4:
+            salt_int = int.from_bytes(salt[:4], "big")
+            rng = np.random.RandomState(salt_int + layer)
+            
+            # Optimize edilmiş pertürbasyon (%1.5)
+            perturbation = rng.randn(n) * 0.015
+            result = (result + perturbation) % 1.0
+        
+        # 4. FINAL NORMALİZASYON
+        result = np.clip(result, 0.0, 1.0)
+        
+        return result
+
+    """
+    def _enhanced_avalanche_boost(self, matrix: np.ndarray, layer: int, salt: bytes) -> np.ndarray:
+        #Gelişmiş avalanche boost. performansı ve avalacheyi düşürüyor
         n = len(matrix)
         result = matrix.copy()
         
@@ -1028,6 +1486,7 @@ class FortifiedKhaCore:
             result = (result - min_val) / (max_val - min_val)
         
         return result
+    """   
     
     def _bit_mixer_transform(self, matrix: np.ndarray, layer: int, salt: bytes) -> np.ndarray:
         """Bit seviyesinde mixing"""
@@ -1483,6 +1942,15 @@ class FortifiedKhaHash256:
             "total_time": 0,
             "avalanche_tests": [],
         }
+        
+        # CACHE init
+        self._cache = {}
+        self._cache_hits = 0
+        self._cache_misses = 0
+        
+        # Avalanche metrikleri
+        self._avalanche_metrics = []
+        self._prev_matrix = None
 
     def hash(self, data: Union[str, bytes], salt: Optional[bytes] = None) -> str:
         """
@@ -1509,6 +1977,16 @@ class FortifiedKhaHash256:
         else:
             # Tuzu güçlendir
             salt = self._strengthen_salt(salt, data_bytes)
+
+        # CACHE KONTROLÜ - DOĞRU YER
+        if self.config.cache_enabled:
+            cache_key = self._create_cache_key(data_bytes, salt)
+            if cache_key in self._cache:
+                self._cache_hits += 1
+                self.metrics["hash_count"] += 1
+                self.metrics["total_time"] += 1  # Minimal zaman
+                return self._cache[cache_key]
+            self._cache_misses += 1
 
         # 1. KHA MATRİS OLUŞTURMA
         seed = self._create_seed(data_bytes, salt)
@@ -1538,10 +2016,225 @@ class FortifiedKhaHash256:
         self.metrics["hash_count"] += 1
         self.metrics["total_time"] += elapsed
 
+        # SONUÇ ÖNBELLEĞE AL
+        if self.config.cache_enabled:
+            self._cache[cache_key] = hex_hash
+            # Cache temizleme (1000'den fazla ise)
+            if len(self._cache) > 1000:
+                # En eski %20'sini temizle
+                keys_to_remove = list(self._cache.keys())[:200]
+                for key in keys_to_remove:
+                    del self._cache[key]
+        
         return hex_hash
+    """
+    def hash(self, data: Union[str, bytes], salt: Optional[bytes] = None) -> str:
+        #Hash işlemi - performans metrikli
+        start_time = time.perf_counter()
+        
+        # Veriyi bytes'a çevir
+        if isinstance(data, str):
+            data_bytes = data.encode("utf-8")
+        else:
+            data_bytes = data
+        
+        # Tuz oluştur
+        if salt is None:
+            salt = self._generate_salt(data_bytes)
+        
+        # Cache kontrol
+        if self.config.cache_enabled:
+            cache_key = self._create_cache_key(data_bytes, salt)
+            if cache_key in self._cache:
+                self.metrics["cache_hits"] = self.metrics.get("cache_hits", 0) + 1
+                return self._cache[cache_key]
+        
+        # Timing
+        kha_matrix_time = 0
+        mixing_time = 0
+        
+        # KHA matris oluşturma
+        seed = self._create_seed(data_bytes, salt)
+        kha_start = time.perf_counter()
+        kha_matrix = self.core._generate_kha_matrix(seed)
+        kha_matrix_time = (time.perf_counter() - kha_start) * 1000
+        
+        # Karıştırma
+        mix_start = time.perf_counter()
+        mixed_matrix = self.core._fortified_mixing_pipeline(kha_matrix, salt)
+        mixing_time = (time.perf_counter() - mix_start) * 1000
+        
+        # Metrikleri güncelle
+        total_time = (time.perf_counter() - start_time) * 1000
+        self.metrics["total_time"] += total_time
+        self.metrics["hash_count"] += 1
+        self.metrics["kha_matrix_time"] = self.metrics.get("kha_matrix_time", 0) + kha_matrix_time
+        self.metrics["mixing_time"] = self.metrics.get("mixing_time", 0) + mixing_time
+        self.metrics["avg_time"] = self.metrics["total_time"] / self.metrics["hash_count"]
+
+        # 2. ÇİFT HASH (opsiyonel)
+        if self.config.double_hashing:
+            intermediate = self.core._fortified_mixing_pipeline(kha_matrix, salt)
+            second_seed = self.core._final_bytes_conversion(intermediate, salt)
+            second_matrix = self.core._generate_kha_matrix(second_seed)
+            kha_matrix = (kha_matrix + second_matrix) % 1.0
+
+        # 3. GÜÇLENDİRİLMİŞ KARIŞTIRMA
+        mixed_matrix = self.core._fortified_mixing_pipeline(kha_matrix, salt)
+
+        # 4. BAYT DÖNÜŞÜMÜ
+        hash_bytes = self.core._final_bytes_conversion(mixed_matrix, salt)
+
+        # 5. SIKIŞTIRMA
+        final_bytes = self.core._secure_compress(hash_bytes, self.config.hash_bytes)
+
+        # 6. HEX KODLAMA
+        hex_hash = final_bytes.hex()
+
+        # Cache'e ekle
+        if self.config.cache_enabled:
+            self._cache[cache_key] = hex_hash
+            
+        return hex_hash
+    """
+
+    """
+    def hash(self, data: Union[str, bytes], salt: Optional[bytes] = None) -> str:
+        # Veriyi hash'le (KHA-256)
+        # Args:
+        #    data: Hash'lenecek veri
+        #    salt: Opsiyonel tuz (None ise rastgele)
+        #Returns:
+        #    64 karakter hex hash
+
+        start_time = time.perf_counter()
+
+        # Veriyi bytes'a çevir
+        if isinstance(data, str):
+            data_bytes = data.encode("utf-8")
+        else:
+            data_bytes = data
+
+        # Tuz oluştur
+        if salt is None:
+            salt = self._generate_salt(data_bytes)
+        else:
+            # Tuzu güçlendir
+            salt = self._strengthen_salt(salt, data_bytes)
+
+        # CACHE KONTROLÜ
+        if self.config.cache_enabled:
+            cache_key = self._create_cache_key(data_bytes, salt)
+            if cache_key in self._cache:
+                self._cache_hits += 1
+                self.metrics["hash_count"] += 1
+                self.metrics["total_time"] += 1  # Minimal zaman
+                return self._cache[cache_key]
+            self._cache_misses += 1
+
+        # 1. KHA MATRİS OLUŞTURMA
+        seed = self._create_seed(data_bytes, salt)
+        kha_matrix = self.core._generate_kha_matrix(seed)
+
+        # 2. ÇİFT HASH (opsiyonel)
+        if self.config.double_hashing:
+            intermediate = self.core._fortified_mixing_pipeline(kha_matrix, salt)
+            second_seed = self.core._final_bytes_conversion(intermediate, salt)
+            second_matrix = self.core._generate_kha_matrix(second_seed)
+            kha_matrix = (kha_matrix + second_matrix) % 1.0
+
+        # 3. GÜÇLENDİRİLMİŞ KARIŞTIRMA
+        mixed_matrix = self.core._fortified_mixing_pipeline(kha_matrix, salt)
+
+        # 4. BAYT DÖNÜŞÜMÜ
+        hash_bytes = self.core._final_bytes_conversion(mixed_matrix, salt)
+
+        # 5. SIKIŞTIRMA
+        final_bytes = self.core._secure_compress(hash_bytes, self.config.hash_bytes)
+
+        # 6. HEX KODLAMA
+        hex_hash = final_bytes.hex()
+
+        # Metrikleri güncelle
+        elapsed = (time.perf_counter() - start_time) * 1000
+        self.metrics["hash_count"] += 1
+        self.metrics["total_time"] += elapsed
+
+        # SONUÇ ÖNBELLEĞE AL
+        if self.config.cache_enabled:
+            self._cache[cache_key] = hex_hash
+            # Cache temizleme (1000'den fazla ise)
+            if len(self._cache) > 1000:
+                # En eski %20'sini temizle
+                keys_to_remove = list(self._cache.keys())[:200]
+                for key in keys_to_remove:
+                    del self._cache[key]
+        
+        return hex_hash
+    """
+
+    def _create_cache_key(self, data: bytes, salt: bytes) -> tuple:
+        """Cache anahtarı oluştur"""
+        # Data hash + salt hash
+        data_hash = hashlib.sha256(data).digest()[:16]
+        salt_hash = hashlib.sha256(salt).digest()[:16]
+        return (bytes(data_hash), bytes(salt_hash))
+    
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Cache istatistiklerini getir"""
+        total = self._cache_hits + self._cache_misses
+        return {
+            "cache_size": len(self._cache),
+            "cache_hits": self._cache_hits,
+            "cache_misses": self._cache_misses,
+            "hit_rate": (self._cache_hits / total * 100) if total > 0 else 0,
+        }
+
+    """
+    def get_cache_stats(self) -> Dict[str, Any]:
+        #Cache istatistiklerini getir
+        return {
+            "cache_size": len(self._cache),
+            "cache_hits": self._cache_hits,
+            "cache_misses": self._cache_misses,
+            "hit_rate": self._cache_hits / max(1, self._cache_hits + self._cache_misses) * 100,
+        }
+    """
+
 
     def _generate_salt(self, data: bytes) -> bytes:
-        """Güçlü tuz oluştur"""
+        # Güçlü ama TUTARLI tuz oluştur
+        # Veri hash'ini temel al (zaman değil)
+        data_hash = hashlib.sha512(data).digest()
+        
+        # Sabit bir seed kullan
+        seed = struct.pack("Q", len(data)) + data[:16].ljust(16, b"\x00")
+        seed_int = int.from_bytes(seed, "big")
+        rng = random.Random(seed_int)
+        
+        # Deterministik tuz
+        salt = bytes([rng.randint(0, 255) for _ in range(self.config.salt_length)])
+        
+        return salt
+
+
+    def _strengthen_salt(self, salt: bytes, data: bytes) -> bytes:
+        # Mevcut tuzu güçlendir (deterministik)
+        if len(salt) < self.config.salt_length:
+            # Deterministik uzatma
+            seed = struct.pack("Q", len(data)) + salt[:16].ljust(16, b"\x00")
+            seed_int = int.from_bytes(seed, "big")
+            rng = random.Random(seed_int)
+            
+            extension_needed = self.config.salt_length - len(salt)
+            extension = bytes([rng.randint(0, 255) for _ in range(extension_needed)])
+            salt = salt + extension
+
+        return salt  # Ek karıştırma YAPMA
+
+    """
+    def _generate_salt(self, data: bytes) -> bytes:
+        #Güçlü tuz oluştur: Aynı girdi farklı hash! Determinist ve uniform değil!
         # Zaman bazlı entropy
         time_part = struct.pack("Q", int(time.time() * 1_000_000))
 
@@ -1570,7 +2263,7 @@ class FortifiedKhaHash256:
         return bytes(salt)
 
     def _strengthen_salt(self, salt: bytes, data: bytes) -> bytes:
-        """Mevcut tuzu güçlendir"""
+        #Mevcut tuzu güçlendir
         if len(salt) < self.config.salt_length:
             # Uzat
             extension = self._generate_salt(data + salt)
@@ -1586,6 +2279,7 @@ class FortifiedKhaHash256:
             strengthened[i] = (strengthened[i] + i) % 256
 
         return bytes(strengthened)
+    """
 
     def _create_seed(self, data: bytes, salt: bytes) -> bytes:
         """Hash seed'i oluştur"""
