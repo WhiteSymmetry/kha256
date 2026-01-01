@@ -697,7 +697,7 @@ Keçeci, M. (2025). Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256.
 
 ---
 
-```markdown
+```
 KHA-256 v0.1.1
 ==========================================
 
