@@ -204,7 +204,7 @@ class FortifiedConfig:
     avalanche_strength: float = 0.02  # %2.5 (daha stabil)
     
     def __post_init__(self):
-        getcontext().prec = 100  # 85: Uniform ve güvenlikten taviz veriyor!
+        getcontext().prec = 128  # 85: Uniform ve güvenlikten taviz veriyor!
         if self.parallel_processing:
             import multiprocessing
             self.max_workers = min(self.max_workers, multiprocessing.cpu_count() - 1)
