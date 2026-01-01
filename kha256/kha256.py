@@ -1952,11 +1952,74 @@ class FortifiedKhaHash256:
         self._avalanche_metrics = []
         self._prev_matrix = None
 
+    def _bias_resistant_postprocess(self, raw_bytes: bytes, input_length: int) -> bytes:
+        if not raw_bytes:
+            return raw_bytes
+
+        salt = getattr(self, '_last_used_salt', b'') or b'\x00' * 32
+
+        # 1. Maske — input_length dahil
+        mask_seed = hashlib.sha3_256(
+            salt + input_length.to_bytes(4, 'big') + b'BIAS_CORR_v3'
+        ).digest()
+        mask = (mask_seed * ((len(raw_bytes) // 32) + 1))[:len(raw_bytes)]
+        masked = bytes(b ^ mask[i] for i, b in enumerate(raw_bytes))
+
+        # 2. Rotate = 23 (sabit, iyi)
+        bits = []
+        for b in masked:
+            for i in range(7, -1, -1):
+                bits.append((b >> i) & 1)
+        if bits:
+            bits = bits[-23:] + bits[:-23]  # 23 → iyi seçim
+
+        # bits → bytes
+        result = bytearray()
+        for i in range(0, len(bits), 8):
+            chunk = bits[i:i+8]
+            if len(chunk) < 8:
+                chunk.extend([0] * (8 - len(chunk)))
+            v = 0
+            for bit in chunk:
+                v = (v << 1) | bit
+            result.append(v)
+        result = result[:len(raw_bytes)]
+
+        # 3. ✅ %25 toggle yoğunluğu, input_length dahil
+        bits2 = []
+        for b in result:
+            for i in range(7, -1, -1):
+                bits2.append((b >> i) & 1)
+
+        toggle_key = hashlib.sha256(
+            salt + input_length.to_bytes(4, 'big') + b'TOGGLE_V3'
+        ).digest()
+
+        for i in range(len(bits2)):
+            byte_idx = (i // 8) % len(toggle_key)
+            # %25 toggle olasılığı
+            if toggle_key[byte_idx] % 6 == 0:  # ~%14.3. 0,4,8,12,... → her 4. byte
+            #if (toggle_key[byte_idx] & 0b111) == 0:  # %12.5
+                bits2[i] ^= 1
+
+        # bits2 → bytes
+        out = bytearray()
+        for i in range(0, len(bits2), 8):
+            chunk = bits2[i:i+8]
+            if len(chunk) < 8:
+                chunk.extend([0] * (8 - len(chunk)))
+            v = 0
+            for bit in chunk:
+                v = (v << 1) | bit
+            out.append(v)
+
+        return bytes(out[:len(raw_bytes)])
+
+    """
     def _bias_resistant_postprocess(self, raw_bytes: bytes) -> bytes:
-        """
-        Chi² bias'ını kırmak için deterministik, tersinir, avalanche-korumalı
-        post-processing. Sadece output bit dağılımını uniform hale getirir.
-        """
+        #Chi² bias'ını kırmak için deterministik, tersinir, avalanche-korumalı
+        #post-processing. Sadece output bit dağılımını uniform hale getirir.
+
         if not raw_bytes:
             return raw_bytes
 
@@ -1998,7 +2061,7 @@ class FortifiedKhaHash256:
                 bits2.append((b >> i) & 1)
         for i in range(len(bits2)):
             #if i % 32 == 31:  # 32., 64., ... bit
-            if (i % 32) in (3, 6,9,12,15, 18,21,24,27,30, 31):  # her 3-8. bitin sonunda toggle → 4× daha fazla varyasyon
+            if (i % 32) in (7, 14, 21, 28, 31): # her 8. bitin sonunda toggle → 4× daha fazla varyasyon
                 bits2[i] ^= 1
 
         out = bytearray()
@@ -2012,7 +2075,7 @@ class FortifiedKhaHash256:
             out.append(v)
 
         return bytes(out[:len(raw_bytes)])
-
+    """
 
     def hash(self, data: Union[str, bytes], salt: Optional[bytes] = None) -> str:
         start_time = time.perf_counter()
@@ -2055,7 +2118,7 @@ class FortifiedKhaHash256:
         compressed = self.core._secure_compress(hash_bytes, self.config.hash_bytes)
 
         # ✅ — YENİ: Bias-kırıcı post-process (sadece 1 satır değişiklik!)
-        final_bytes = self._bias_resistant_postprocess(compressed)
+        final_bytes = self._bias_resistant_postprocess(compressed, len(data_bytes))
 
         # 6. Hex
         hex_hash = final_bytes.hex()
@@ -2473,7 +2536,41 @@ class FortifiedKhaHash256:
     """
 
     def _create_seed(self, data: bytes, salt: bytes) -> bytes:
-        """Hash seed'i oluştur"""
+        # Header: uzunluk bilgisi
+        header = len(data).to_bytes(4, 'big') + len(salt).to_bytes(4, 'big')
+        
+        # 1. Tur: tam veri
+        h1 = hashlib.sha512(header + data + salt).digest()
+        
+        # 2. Tur: verinin hash'ini kullan (uzunluk bağımsız)
+        if len(data) <= 1024:
+            h2_input = h1 + data + salt
+        else:
+            # Uzun veride: her 512 byte'dan bir örnek
+            sampled = b"".join(data[i:i+64] for i in range(0, len(data), 512))[:512]
+            h2_input = h1 + sampled + salt
+        
+        seed = hashlib.sha512(h2_input).digest()
+        return seed
+
+    """
+    def _create_seed(self, data: bytes, salt: bytes) -> bytes:
+        # Veri boyutunu da entegre et
+        header = len(data).to_bytes(4, 'big') + len(salt).to_bytes(4, 'big')
+        combined = header + data + salt
+        
+        seed = hashlib.sha512(combined).digest()
+        # Ek entropy: uzun veriler için 2. tur
+        if len(data) > 256:
+            seed = hashlib.sha512(seed + data[:256] + data[-256:]).digest()
+        elif len(data) > 64:
+            seed = hashlib.sha512(seed + data).digest()
+        
+        return seed
+    """
+    """
+    def _create_seed(self, data: bytes, salt: bytes) -> bytes:
+        #Hash seed'i oluştur
         # Veri ve tuzu birleştir
         combined = data + salt
 
@@ -2483,6 +2580,7 @@ class FortifiedKhaHash256:
             seed = hashlib.sha512(seed).digest()
 
         return seed
+    """
 
     def _secure_hex_encode(self, data: bytes) -> str:
         """Güvenli hex kodlama"""
