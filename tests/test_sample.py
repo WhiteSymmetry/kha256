@@ -5,9 +5,9 @@ Comprehensive unit tests for the kha256 module.
 Tests core functionality, number type generation, and mathematical properties.
 """
 
-import unittest
-import numpy as np
-import logging
-# Module logger — library code should not configure logging handlers.
-logger = logging.getLogger(__name__)
+import kha256
 
+# Basit test
+hasher = kha256.generate_fortified_hasher()
+hash_result = hasher.hash("Merhaba Dünya!")
+print(f"KHA-256 Hash: {hash_result}")
