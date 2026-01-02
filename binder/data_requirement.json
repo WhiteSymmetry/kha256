@@ -1,7 +1,7 @@
 {
   "kha256_data_requirements": {
     "description": "Keçeci Hash Algorithm (KHA-256) için veri gereksinimleri",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "author": "Mehmet Keçeci",
     "license": "AGPL-3.0",
     
