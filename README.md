@@ -95,8 +95,8 @@
 ## 📦 Kurulum
 
 ### Gereksinimler
-- Python 3.10 veya üzeri
-- NumPy 2.20.0+
+- Python 3.11 veya üzeri
+- NumPy 2.3.0+
 - KeçeciNumbers 0.8.4+
 
 ### Pip ile Kurulum
