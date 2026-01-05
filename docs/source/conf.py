@@ -16,7 +16,7 @@ try:
     import kha256
     release = kha256.__version__
 except ImportError:
-    release = '0.1.1'
+    release = '0.1.2'
 
 # Sphinx extensions
 extensions = [
