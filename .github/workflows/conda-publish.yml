@@ -21,11 +21,14 @@ jobs:
         with:
           auto-activate-base: false
           python-version: "${{ matrix.python-version }}"
-          channels: conda-forge,defaults
+          channels: conda-forge,bilgi,defaults  # 'bilgi' kanalı EKLENDİ
           channel-priority: strict
 
       - name: Install Conda-Build and Conda-Verify
-        run: conda install -n base conda-build -y
+        run: |
+          # 'bilgi' kanalını base'e ekle
+          conda config --add channels bilgi
+          conda install -n base conda-build conda-verify -y
 
       - name: Build the package for Python ${{ matrix.python-version }}
         run: |
@@ -41,27 +44,43 @@ jobs:
           echo "Oluşturulan paket:"
           ls -l dist
 
-      - name: Create test environment and install dependencies
+      - name: Create test environment with 'bilgi' channel
         run: |
-          conda create -n test-env -y python=${{ matrix.python-version }} numpy kececinumbers pytest pytest-cov
+          # Test ortamı için bilgi kanalı ile kececinumbers
+          conda create -n test-env -y python=${{ matrix.python-version }} \
+            numpy pytest pytest-cov \
+            -c conda-forge -c bilgi  # Kanal önceliği: bilgi önce
+          
+          # kececinumbers ayrıca yükle (zorunlu dependency)
+          conda install -n test-env -y kececinumbers -c bilgi
+          
+          echo "Test ortamı paketleri:"
+          conda list -n test-env | grep -E "(numpy|kececinumbers|pytest)"
 
       - name: Run development tests
         run: |
-          conda run -n test-env --no-capture-output python -m pytest tests/ --cov=kha256
+          conda run -n test-env pytest tests/ --cov=kha256 --cov-report=term-missing
 
       - name: Install and test the built package
         run: |
           PACKAGE_FILE=$(ls dist/*.conda | head -n 1)
+          echo "Kurulan paket: $PACKAGE_FILE"
+          
           conda install -n test-env -y "$PACKAGE_FILE"
-          conda run -n test-env --no-capture-output python -c "import kha256; print('Import successful for Python ${{ matrix.python-version }}!')"
+          conda run -n test-env python -c "
+import kha256
+import kececinumbers  # Dependency testi
+print('✅ Paket ve dependencies başarıyla yüklendi!')
+print(f'KHA-256 version: {kha256.__version__}')
+          "
 
-      - name: Debug - List files in the workspace
+      - name: Debug - Environment info
+        if: failure()
         run: |
-          echo "--- Current Working Directory ---"
-          pwd
-          echo "--- Recursive file listing ---"
-          ls -R
-          echo "--- End of file listing ---"
+          echo "--- Test Environment Debug ---"
+          conda info
+          conda list -n test-env
+          conda env export -n test-env
 
       - name: Upload to Anaconda Cloud
         if: success()
@@ -71,7 +90,7 @@ jobs:
           PACKAGE_FILES=$(find dist -name "*.conda")
           
           if [ -z "$PACKAGE_FILES" ]; then
-            echo "HATA: Yüklenecek .conda dosyası bulunamadı!"
+            echo "HATA: Yüklenecek .conda dosyası yok!"
             exit 1
           fi
 
@@ -79,11 +98,14 @@ jobs:
           echo "$PACKAGE_FILES"
           
           conda install -n base -y anaconda-client
-          conda run -n base anaconda -t $ANACONDA_TOKEN upload \
+          anaconda -t $ANACONDA_TOKEN upload \
             $PACKAGE_FILES \
             --label main \
-            --skip-existing
+            --skip-existing \
+            --force
 
-      - name: Cleanup test environment
+      - name: Cleanup
         if: always()
-        run: conda env remove -n test-env || true
+        run: |
+          conda env remove -n test-env || true
+          rm -rf dist/
