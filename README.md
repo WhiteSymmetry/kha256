@@ -12,6 +12,7 @@
 [![PyPI version](https://badge.fury.io/py/kha256.svg)](https://badge.fury.io/py/kha256/)
 [![License: MIT](https://img.shields.io/badge/License-AGPL-yellow.svg)](https://opensource.org/license/agpl-v3)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18089401.svg)](https://doi.org/10.5281/zenodo.18089401)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18089401.svg)](https://doi.org/10.5281/zenodo.18156885)
 
 
 [![Anaconda-Server Badge](https://anaconda.org/bilgi/kha256/badges/version.svg)](https://anaconda.org/bilgi/kha256)
@@ -686,6 +687,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 ### APA
 
 ```
+Keçeci, M. (2025). KHA-256: A Next-Generation Cryptographic Hash Function Based on Keçeci Numbers and Mathematical Constants. Open Science Articles (OSAs), Zenodo. https://doi.org/10.5281/zenodo.18156885
+
+Keçeci, M. (2025). KHA-256. GitHub, PyPI, Anaconda, Zenodo. https://doi.org/10.5281/zenodo.18089401 & https://github.com/WhiteSymmetry/kha256 & https://pypi.org/project/kha256 & https://anaconda.org/bilgi/kha256
 
 Keçeci, M. (2025). Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256. https://github.com/WhiteSymmetry/kha256
 
