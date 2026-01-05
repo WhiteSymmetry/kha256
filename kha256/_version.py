@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # _version.py
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 __license__ = "AGPL-3.0 license"
 __description__ = "Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256"
 __author__ = "Mehmet Keçeci"
