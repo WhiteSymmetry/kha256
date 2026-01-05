@@ -17,7 +17,8 @@ authors:
 identifiers:
   - type: doi
     value: 10.5281/zenodo.18089401
-
+  - type: doi
+    value: 10.5281/zenodo.18156885
 repository-code: 'https://github.com/WhiteSymmetry/kha256'
 url: 'https://github.com/WhiteSymmetry/kha256'
 repository: 'https://anaconda.org/bilgi/kha256'
