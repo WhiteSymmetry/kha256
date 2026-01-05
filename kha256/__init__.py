@@ -21,7 +21,7 @@ import warnings
     # importlib.reload(kha256) # F821 undefined name 'kha256'
 
 # Paket sürüm numarası
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0"
 __copyright__ = "Copyright 2025 Mehmet Keçeci"
