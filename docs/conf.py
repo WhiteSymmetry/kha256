@@ -12,11 +12,21 @@ copyright = f'{datetime.now().year}, Mehmet Keçeci'
 author = 'Mehmet Keçeci'
 
 # The full version, including alpha/beta/rc tags
+version = None
+release = None
+
+try:
+    import kha256
+    release = getattr(kha256, '__version__', release)
+except ImportError as e:
+    print(f"Warning: Could not import kha256: {e}")
+"""    
 try:
     import kha256
     release = kha256.__version__
 except ImportError:
     release = '0.1.2'
+"""
 
 # Sphinx extensions
 extensions = [
