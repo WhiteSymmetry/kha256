@@ -10,7 +10,7 @@
 ![Status](https://img.shields.io/badge/status-production--ready-brightgreen)
 
 [![PyPI version](https://badge.fury.io/py/kha256.svg)](https://badge.fury.io/py/kha256/)
-[![License: MIT](https://img.shields.io/badge/License-AGPL-yellow.svg)](https://opensource.org/license/agpl-v3)
+[![License: AGPL](https://img.shields.io/badge/License-AGPL-yellow.svg)](https://opensource.org/license/agpl-v3)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18089401.svg)](https://doi.org/10.5281/zenodo.18089401)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18089401.svg)](https://doi.org/10.5281/zenodo.18156885)
 
