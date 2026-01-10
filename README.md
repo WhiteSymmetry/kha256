@@ -23,6 +23,7 @@
 [![Open Source](https://img.shields.io/badge/Open%20Source-Open%20Source-brightgreen.svg)](https://opensource.org/)
 [![Documentation Status](https://app.readthedocs.org/projects/kha256/badge/?0.1.0=main)](https://kha256.readthedocs.io/en/stable/)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/11668/badge)](https://www.bestpractices.dev/projects/11668)
+[![](https://badges.frapsoft.com/os/v1/open-source.png?v=103)](https://github.com/WhiteSymmetry/kha256)
 
 [![Python CI](https://github.com/WhiteSymmetry/kha256/actions/workflows/python_ci.yml/badge.svg?branch=main)](https://github.com/WhiteSymmetry/kha256/actions/workflows/python_ci.yml)
 [![codecov](https://codecov.io/gh/WhiteSymmetry/kha256/graph/badge.svg?token=DFJ046KEDT)](https://codecov.io/gh/WhiteSymmetry/kha256)
