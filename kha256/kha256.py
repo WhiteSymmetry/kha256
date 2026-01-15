@@ -38,7 +38,7 @@ __version__ = "0.1.2"
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0 license"
 
-req_kececinumbers = "0.8.4"
+req_kececinumbers = "0.8.6"
 
 # KeçeciNumbers kontrolü - API uyumlu hale getirildi
 try:
