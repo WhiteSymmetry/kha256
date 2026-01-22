@@ -418,9 +418,9 @@ class FortifiedKhaCore:
         
         logger.debug(f"Using {num_types_to_use} KHA types from {len(SAFE_TYPES)} safe types")
         
-        for type_idx, kha_type in enumerate(selected_types):
+        for type_idx, kececi_type in enumerate(selected_types):
             try:
-                type_info = TYPE_REQUIREMENTS.get(kha_type, {"format": "simple_float", "components": 1})
+                type_info = TYPE_REQUIREMENTS.get(kececi_type, {"format": "simple_float", "components": 1})
                 format_type = type_info["format"]
                 components_needed = type_info["components"]
                 
@@ -442,7 +442,7 @@ class FortifiedKhaCore:
                         add_factor = 0.00005 * (1 + type_idx * 0.05)
                         add_val = str(float_val * add_factor)
                         
-                        if kha_type == TYPE_NEGATIVE_REAL:
+                        if kececi_type == TYPE_NEGATIVE_REAL:
                             start_val = "-" + start_val
                             add_val = "-" + add_val
                             
@@ -528,7 +528,7 @@ class FortifiedKhaCore:
                         add_val = str(float_val * 0.0001)
                     
                     # DEBUG: Format kontrolü
-                    logger.debug(f"Type {kha_type} ({format_type}): start='{start_val[:50]}...', add='{add_val[:30]}...'")
+                    logger.debug(f"Type {kececi_type} ({format_type}): start='{start_val[:50]}...', add='{add_val[:30]}...'")
                     
                     # API çağrısı - farklı API versiyonlarını dene
                     seq = None
@@ -540,19 +540,19 @@ class FortifiedKhaCore:
                         sig = inspect.signature(kn.get_with_params)
                         params = list(sig.parameters.keys())
                         
-                        if 'kha_type_choice' in params:
+                        if 'kececi_type_choice' in params:
                             # Yeni API
                             seq = kn.get_with_params(
-                                kha_type_choice=kha_type,
+                                kececi_type_choice=kececi_type,
                                 iterations=iteration_depth,
                                 start_value_raw=start_val,
                                 add_value_raw=add_val,
                                 include_intermediate_steps=False,
                             )
-                        elif 'kha_type' in params:
+                        elif 'kececi_type' in params:
                             # Eski API
                             seq = kn.get_with_params(
-                                kha_type=kha_type,
+                                kececi_type=kececi_type,
                                 iterations=iteration_depth,
                                 start_value=start_val,
                                 add_value=add_val,
@@ -561,7 +561,7 @@ class FortifiedKhaCore:
                         elif 'type_choice' in params:
                             # Alternatif API
                             seq = kn.get_with_params(
-                                type_choice=kha_type,
+                                type_choice=kececi_type,
                                 iterations=iteration_depth,
                                 start_val=start_val,
                                 add_val=add_val,
@@ -569,7 +569,7 @@ class FortifiedKhaCore:
                         else:
                             # Pozisyonel argümanlar
                             seq = kn.get_with_params(
-                                kha_type,
+                                kececi_type,
                                 iteration_depth,
                                 start_val,
                                 add_val,
@@ -581,27 +581,27 @@ class FortifiedKhaCore:
                         # Doğrudan denemeler
                         api_attempts = [
                             lambda: kn.get_with_params(
-                                kha_type_choice=kha_type,
+                                kececi_type_choice=kececi_type,
                                 iterations=iteration_depth,
                                 start_value_raw=start_val,
                                 add_value_raw=add_val,
                                 include_intermediate_steps=False,
                             ),
                             lambda: kn.get_with_params(
-                                kha_type=kha_type,
+                                kececi_type=kececi_type,
                                 iterations=iteration_depth,
                                 start_value=start_val,
                                 add_value=add_val,
                                 include_intermediate_steps=False,
                             ),
                             lambda: kn.get_with_params(
-                                type_choice=kha_type,
+                                type_choice=kececi_type,
                                 iterations=iteration_depth,
                                 start_val=start_val,
                                 add_val=add_val,
                             ),
                             lambda: kn.get_with_params(
-                                kha_type,
+                                kececi_type,
                                 iteration_depth,
                                 start_val,
                                 add_val,
@@ -649,7 +649,7 @@ class FortifiedKhaCore:
                     self._add_math_fallback_values(values, type_idx, rng)
 
             except Exception as e:
-                logger.error(f"KHA matrix error for type {kha_type}: {e}")
+                logger.error(f"KHA matrix error for type {kececi_type}: {e}")
                 self.stats["kha_fail"] += 1
                 
                 # Güvenli fallback
