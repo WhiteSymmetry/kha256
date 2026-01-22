@@ -39,6 +39,7 @@
 ![PyPI Downloads](https://img.shields.io/pypi/dm/kha256?logo=pypi&label=PyPi%20downloads)
 [![](https://data.jsdelivr.com/v1/package/gh/WhiteSymmetry/kha256/badge)](https://www.jsdelivr.com/package/gh/WhiteSymmetry/kha256)
 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/kha256?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/kha256)
+[![Socket Badge](https://badge.socket.dev/pypi/package/kha256/0.1.2?artifact_id=tar-gz)](https://badge.socket.dev/pypi/package/kha256/0.1.2?artifact_id=tar-gz)
 
 **Performanstan Fedakarlık Edilerek Güvenlik Maksimize Edilmiş Hash Algoritması**  
 **Hash Algorithm with Security Maximized at the Sacrifice of Performance**
