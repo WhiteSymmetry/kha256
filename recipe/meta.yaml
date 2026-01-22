@@ -47,7 +47,7 @@ test:
 
 about:
   home: https://github.com/WhiteSymmetry/kha256
-  license: AGPL-3.0
+  license: AGPL-3.0-or-later
   summary: 'Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256.'
   description: |
     Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256.
