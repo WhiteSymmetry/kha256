@@ -41,6 +41,6 @@ Repository = "https://github.com/WhiteSymmetry/kha256"
 
 [dependency-groups]
 build = [
-    "setuptools (>=80.9.0,<81.0.0)",
-    "cython (>=3.2.3,<4.0.0)"
+    "setuptools (>=80.9.0)",
+    "cython (>=3.2.3)"
 ]
