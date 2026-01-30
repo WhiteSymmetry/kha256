@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kha256"
-version = "0.1.2"
+version = "0.1.3"
 
 # Diğer proje bilgileri (isteğe bağlı ama tavsiye edilir)
 authors = [
