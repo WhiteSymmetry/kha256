@@ -1,4 +1,4 @@
-{% set version = "0.1.3" %}
+{% set version = "0.1.4" %}
 
 package:
   name: kha256
@@ -23,7 +23,7 @@ build:
 requirements:
   host:
     - python {{ python }}
-    - kececinumbers >=0.8.4
+    - kececinumbers >=0.9.1
     - numpy
     - setuptools
     # Other build tools
@@ -42,7 +42,7 @@ test:
     - numpy
   imports:
     - kha256
-    - kececinumbers >=0.8.4
+    - kececinumbers >=0.9.1
     - numpy
 
 about:
