@@ -21,7 +21,7 @@ import warnings
     # importlib.reload(kha256) # F821 undefined name 'kha256'
 
 # Paket sürüm numarası
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0"
 __copyright__ = "Copyright 2025 Mehmet Keçeci"
@@ -33,18 +33,26 @@ __all__ = [
     "FortifiedKhaHash256",
     "FortifiedConfig",
     "FortifiedKhaCore",
+    "OptimizedKhaHash256",
+    "OptimizedFortifiedConfig",
     
     # Kolay kullanım fonksiyonları
     "generate_fortified_hasher",
     "quick_hash",
     "hash_password",
+    "PerformanceOptimizedKhaCore",
+    "ByteDistributionOptimizer",
+    "get_hasher_config",
     
     # Test fonksiyonları
+    #"run_comprehensive_security_test",
     "run_comprehensive_test",
-    "benchmark_hash",
+    #"benchmark_hash",
     
     # Yardımcı sınıflar
     "MathematicalSecurityBases",
+    "SecurityConstants",
+    "SecurityLayers",
     
     # Sabitler
     "KHA_AVAILABLE",
@@ -69,18 +77,26 @@ try:
         FortifiedKhaHash256,
         FortifiedConfig,
         FortifiedKhaCore,
+        OptimizedKhaHash256,
+        OptimizedFortifiedConfig,
+        HardwareSecurityID,
         
         # Yardımcı sınıflar
         MathematicalSecurityBases,
+        SecurityConstants,
+        SecurityLayers,
         
         # Kolay kullanım fonksiyonları
         generate_fortified_hasher,
         quick_hash,
         hash_password,
+        PerformanceOptimizedKhaCore,
+        ByteDistributionOptimizer,
+        get_hasher_config,
         
         # Test fonksiyonları
         run_comprehensive_test,
-        benchmark_hash,
+        #benchmark_hash,
         
         # Sabitler ve durum değişkenleri
         KHA_AVAILABLE,
