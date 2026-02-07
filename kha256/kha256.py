@@ -605,9 +605,8 @@ class SecurityLayers:
 # MATEMATİKSEL GÜVENLİK TABANLARI (GÜÇLENDİRİLMİŞ)
 # ============================================================
 class MathematicalSecurityBases:
-    """Güçlendirilmiş matematiksel güvenlik sabitleri ve fonksiyonları"""
+    """Güçlendirilmiş matematiksel güvenlik sabitleri ve fonksiyonları (Kripto için optimize)"""
 
-    # Özel matematiksel sabitler (genişletilmiş)
     SECURITY_CONSTANTS = {
         # İrrasyonel sabitler
         "kha_pi": 3.14159265358979323846264338327950288419716939937510,
@@ -617,6 +616,7 @@ class MathematicalSecurityBases:
         "plastic_number": 1.32471795724474602596090885447809734073440405690173,
         "tribonacci_constant": 1.8392867552141611325518525646532866004241787460975,
         "supergolden_ratio": 1.465571231876768026656731225219939,
+
         # Özel matematiksel sabitler
         "apery": 1.202056903159594285399738161511449990764986292,
         "catalan": 0.91596559417721901505460351493238411077414937428167,
@@ -624,19 +624,48 @@ class MathematicalSecurityBases:
         "gauss": 0.834626841674073186281429734799,
         "ramanujan_soldner": 1.451369234883381050283968485892027,
         "mills_constant": 1.30637788386308069046861449260260571,
-        # Transandantal sabitler
+        
+        # Aşkın (Transandantal) sabitler: (rastgelelik için)
         "euler_mascheroni": 0.57721566490153286060651209008240243104215933593992,
         "khinchin": 2.68545200106530644530971483548179569382038229399446,
         "glaisher": 1.28242712910062263687534256886979172776768892732500,
         "gompertz": 0.596347362323194074341078499,
-        "liouville": 0.11000100000000000000000100000000000000000000000000,
+        "liouville": 0.11000100000000000000000100000000000000000000000000, # İlk aşkın
+        "champernowne": 0.1234567891011121314159265358979323846264338327950288419716939937510,, # Aşkın (string concat)
+        
         # Özel güvenlik sabitleri
         "kececi_constant": 2.2360679774997896964091736687312762354406183596115,  # √5
         "security_phi": 1.381966011250105151795413165634361,  # 2-φ
         "quantum_constant": 1.5707963267948966192313216916397514420985846996875,  # π/2
+        
+        # EKLEMELER: Kriptografik sabitler [web:105][web:106]
+        "tau": 6.2831853071795864769252867665590057683943387987502,  # 2π (hash rotasyon)
+        "sqrt_2": 1.41421356237309504880168872420969807856967187537695,  # ECC
+        "sqrt_3": 1.73205080756887729352744634150587236694280525381038,  # Lattice
+        "sqrt_5": 2.23606797749978969640917366873127623544061835961152,  # Pentagonal
+        "zeta_2": 1.6449340668482264364724151666460251892189499012068,   # Basel problemi (zeta(2))
+        "zeta_3": 1.2020569031595942853997381615114499907649862923405,   # Apéry (mevcut)
+        
+        # Fizik sabitleri (kripto seed)
+        "planck_h": 6.62607015e-34,      # Planck sabiti
+        "fine_structure": 0.0072973525643, # α ≈ 1/137
+        "feigenbaum_1": 4.669201609102990, # Kaos teorisi δ
+        "feigenbaum_2": 2.5029078750958928, # Kaos β
+
+        # Oktonyonik (8B güvenlik)
+        "octonion_e1": 1.0, "octonion_e2": 0.0,  # Baz birimler (basitleştirilmiş)
+        "oktonyon_e1": 1.0, "oktonyon_e2": 0.0,
+        "oktonyon_e1": 1.0, "oktonyon_e2": 0.0, "oktonyon_e3": 0.0,
+        "oktonyon_e4": 0.0, "oktonyon_e5": 0.0, "oktonyon_e6": 0.0,
+        "oktonyon_e7": 0.0, "oktonyon_e8": 0.0,  # 8 baz birim
+        
+        # Kripto Sabiler (SHA-3, AES rotasyon)
+        "sha3_rc0": 0x0000000000000001,
+        "aes_sbox_rot": 1.0 / 17.0,  # S-box tasarımı
+        "poly1305_r": 0x0bf92d25f50a65f5,  # MAC
     }
 
-    # Güvenlik dönüşüm fonksiyonları (genişletilmiş)
+    # TRANSFORMATIONS (20+ EKLEME)
     TRANSFORMATIONS = [
         # Sinüs tabanlı (genişletilmiş)
         lambda x: np.sin(x * np.pi * 1.618033988749895),
@@ -666,9 +695,26 @@ class MathematicalSecurityBases:
         lambda x: np.arctan(np.tanh(x * 2.71828) * 3.14159),
         lambda x: np.log1p(np.abs(np.sin(x * np.pi))),
         lambda x: np.sqrt(np.abs(np.cos(x * 1.32472)) + 1e-10),
-        # Kriptografik
+        # Kriptografik primitifler
         lambda x: ((x * 0x9E3779B97F4A7C15) & 0xFFFFFFFFFFFFFFFF) / 0xFFFFFFFFFFFFFFFF,
         lambda x: ((x * 0x6A09E667F3BCC908) & 0xFFFFFFFFFFFFFFFF) / 0xFFFFFFFFFFFFFFFF,
+        lambda x: ((x * 0x9E3779B97F4A7C15) % (1<<64)) / (1<<64),  # Golden ratio rot
+        lambda x: np.modf(x * 11400714819323198485)[0],  # PCG rotasyon sabiti
+        # Oktonyonik (non-associative)
+        lambda x: np.sin(x) * np.cos(x * 0.7071) - np.cos(x) * np.sin(x * 0.7071),  # ijk benzeri
+        lambda x: np.tanh(x) * np.sin(x * np.sqrt(2)),
+        lambda x: (np.sin(x) + np.cos(x * 1.618) + np.tanh(x * 2.718) + np.arctan(x * 3.14159)) / 4,  # 4D quaternion benzeri
+        # Kaos & Fraktal
+        lambda x: 4 * x * (1 - x),  # Logistic map (r=4)
+        lambda x: x * 3.999999 - np.floor(x * 3.999999),  # Fractional part
+        lambda x: np.tanh(x / 137.035999) * np.sin(x * np.sqrt(2)),
+        # Aşkın Fonksiyonlar
+        lambda x: np.sin(np.pi * x) * np.exp(-np.abs(x)),  # π+e karışımı
+        lambda x: np.arctan(x * np.e) / (np.pi / 2),
+        # Fiziksel
+        lambda x: np.tanh(x / 137.035999) * np.sin(x),  # İnce yapı sabiti
+        # Fraktal Zamanı
+        lambda x: np.sin(2*np.log2(np.abs(x)+1e-10) * np.pi),
     ]
 
     @staticmethod
