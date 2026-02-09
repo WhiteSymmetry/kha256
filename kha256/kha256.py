@@ -54,7 +54,7 @@ logging.basicConfig(
 logger = logging.getLogger("KHA-256")
 
 # Version information
-__version__ = "0.1.4"  # Updated
+__version__ = "0.1.6"  # Updated
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0 license"
 __status__ = "Pre-Production"
