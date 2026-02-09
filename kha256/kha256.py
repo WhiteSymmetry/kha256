@@ -6,10 +6,11 @@ Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256
 Performanstan fedakarlık edilerek güvenlik maksimize edilmiş versiyondur.
 It is the version with security maximized at the sacrifice of performance.
 ================================================================
-# pip install -U kececinumbers bcrypt blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography
-# conda install -c conda-forge kececinumbers bcrypt blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography
+# pip install -U bcrypt blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography
+# conda install -c conda-forge bcrypt blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography
 # pip install xxhash: # xxh32 collision riski yüksek (64-bit için ~yüz milyonlarda %0.03)
 """
+
 
 from __future__ import annotations
 import argon2 
@@ -41,6 +42,7 @@ import uuid
 from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union, cast, Callable
 import xxhash  # pip install xxhash: # xxh32 collision riski yüksek (64-bit için ~yüz milyonlarda %0.03)
 
+
 import numpy as np
 import pandas as pd
 
@@ -52,7 +54,7 @@ logging.basicConfig(
 logger = logging.getLogger("KHA-256")
 
 # Version information
-__version__ = "0.1.5"  # Updated
+__version__ = "0.1.4"  # Updated
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0 license"
 __status__ = "Pre-Production"
@@ -6170,6 +6172,28 @@ class SecureKhaHash256:
     def verify_avalanche(self, n=10000):
         # BLAKE2 zaten NIST onaylı, test etmeye gerek yok
         return {"status": "CRYPTographically SECURE"}
+
+# Basit Hasher wrapper sınıfı
+class SimpleKhaHasher:
+    def __init__(self, salt: bytes = None):
+        self.salt = salt or b"KHA_DEFAULT_SALT_32BYTES!!"
+    
+    def hash(self, data: str, salt: bytes = None) -> str:
+        """String input → KHA hash"""
+        salt = salt or self.salt
+        return hash_password_str(data, salt)
+    
+    def get_security_report(self) -> Dict[str, Any]:
+        return {
+            "features": {
+                "scrypt_kdf": True,
+                "memory_hard": True,
+                "deterministic": True,
+                "usb_optimized": True,
+                "anti_gpu": True
+            },
+            "version": "KHA-256 v1.0"
+        }
 
 
 def run_comprehensive_test():
