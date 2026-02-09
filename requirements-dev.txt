@@ -4,4 +4,10 @@ kececinumbers
 pytest
 flake8
 pytest-cov
-
+bcrypt
+blake3
+pycryptodome
+xxhash
+argon2-cffi
+pandas 
+cryptography
