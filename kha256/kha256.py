@@ -6,8 +6,8 @@ Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256
 Performanstan fedakarlık edilerek güvenlik maksimize edilmiş versiyondur.
 It is the version with security maximized at the sacrifice of performance.
 ================================================================
-# pip install -U bcrypt blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography
-# conda install -c conda-forge bcrypt blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography
+# pip install -U kececinumbers bcrypt blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography
+# conda install -c conda-forge kececinumbers bcrypt blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography
 # pip install xxhash: # xxh32 collision riski yüksek (64-bit için ~yüz milyonlarda %0.03)
 """
 
