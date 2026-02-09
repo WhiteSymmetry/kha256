@@ -1,12 +1,12 @@
 # pyproject.toml
 
 [build-system]
-requires = ["setuptools>=77.0"]
+requires = ["setuptools>=82.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "kha256"
-version = "0.1.4"
+version = "0.1.5"
 
 # Diğer proje bilgileri (isteğe bağlı ama tavsiye edilir)
 authors = [
@@ -27,6 +27,13 @@ classifiers = [
 dependencies = [
     "numpy",
     "kececinumbers",
+    "bcrypt",
+    "blake3",
+    "pycryptodome",
+    "xxhash",
+    "argon2-cffi",
+    "pandas",
+    "cryptography",
 ]
 
 [project.optional-dependencies]
@@ -41,6 +48,6 @@ Repository = "https://github.com/WhiteSymmetry/kha256"
 
 [dependency-groups]
 build = [
-    "setuptools (>=80.9.0)",
+    "setuptools (>=82.0.0)",
     "cython (>=3.2.3)"
 ]
