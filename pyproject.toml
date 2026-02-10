@@ -34,6 +34,8 @@ dependencies = [
     "argon2-cffi",
     "pandas",
     "cryptography",
+    "ipywidgets",
+    "ipython",
 ]
 
 [project.optional-dependencies]
@@ -49,5 +51,5 @@ Repository = "https://github.com/WhiteSymmetry/kha256"
 [dependency-groups]
 build = [
     "setuptools (>=82.0.0)",
-    "cython (>=3.2.3)"
+    "cython (>=3.2.4)"
 ]
