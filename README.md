@@ -105,7 +105,7 @@
 
 ### Pip ile Kurulum
 ```bash
-pip install -U kececinumbers==0.8.4
+pip install -U kha256==0.8.4
 pip install -U numpy>=2.3.0
 ```
 
@@ -286,6 +286,9 @@ class FortifiedKhaHash256:
 ```
 
 #### `FortifiedConfig`
+# Her sürümde bu yapılanma değişmektedir ve sabit değildir.
+# The structure of this organization changes with each version and is not fixed.
+
 Konfigürasyon sınıfı.
 
 ```python
@@ -304,7 +307,7 @@ class FortifiedConfig:
     enable_post_quantum_mixing: bool = True
     double_hashing: bool = True
     triple_compression: bool = True
-    memory_hardening: bool = True
+    memory_hardening: bool = False # only memory-hard: "class TrueMemoryHardHasher"
     entropy_injection: bool = True
     time_varying_salt: bool = True
     context_sensitive_mixing: bool = True
@@ -413,7 +416,7 @@ almış olmalısınız. Almadıysanız, <http://www.gnu.org/licenses/> adresine 
 
 ### Install via Pip
 ```bash
-pip install kececinumbers==0.8.4
+pip install kha256==0.8.4
 pip install numpy>=1.20.0
 ```
 
@@ -733,3 +736,57 @@ KHA-256 v0.1.1
 - Kriptografik imzalar
 - Kuantum sonrası dönem için hazırlık
 ```
+
+# Pixi:
+
+[![Pixi](https://img.shields.io/badge/Pixi-Pixi-brightgreen.svg)](https://prefix.dev/channels/bilgi)
+
+pixi init kha256
+
+cd kha256
+
+pixi workspace channel add https://repo.prefix.dev/bilgi --prepend
+
+✔ Added https://repo.prefix.dev/bilgi
+
+pixi add kha256
+
+✔ Added kha256
+
+pixi install
+
+pixi shell
+
+pixi run python -c "import kha256; print(kha256.__version__)"
+
+### Çıktı:
+
+pixi remove kha256
+
+conda install -c https://prefix.dev/bilgi kha256
+
+pixi run python -c "import kha256; print(kha256.__version__)"
+
+### Çıktı:
+
+pixi run pip list | grep kha256
+
+### kha256
+
+pixi run pip show kha256
+
+Name: kha256
+
+Version: 0.9.1
+
+Summary: KHA-256
+
+Home-page: https://github.com/WhiteSymmetry/kha256
+
+Author: Mehmet Keçeci
+
+Author-email: Mehmet Keçeci <...>
+
+License: GNU AFFERO GENERAL PUBLIC LICENSE
+
+Copyright (c) 2025-2026 Mehmet Keçeci
