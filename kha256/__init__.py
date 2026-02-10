@@ -21,7 +21,7 @@ import warnings
     # importlib.reload(kha256) # F821 undefined name 'kha256'
 
 # Paket sürüm numarası
-__version__ = "0.1.8"
+__version__ = "0.1.9"
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0-or-later"
 __copyright__ = "Copyright 2025-2026 Mehmet Keçeci"
@@ -62,6 +62,18 @@ __all__ = [
     "ultra_fast_hash",
     "ultra_fast_hash_hex",
     "ultra_fast_hash_int_to_hex",
+    "show_rate_limiter_info",
+    "run_cli_demo",
+    "RateLimiterDemoUI",
+    "SecureLoginSystem",
+    "MockAuthSystem",
+    "SimpleRateLimiter",
+    "MemoryHardDemo",
+    "db",
+    "performance_comparison",
+    "economic_analysis",
+    "secure_password_hashing",
+
     "__version__",
     "__author__",
     "__license__"
@@ -155,6 +167,17 @@ from .kha256 import (
     shake256_256,
     shake256_512,
     test_shake256,
+    show_rate_limiter_info,
+    run_cli_demo,
+    RateLimiterDemoUI,
+    SecureLoginSystem,
+    MockAuthSystem,
+    SimpleRateLimiter,
+    MemoryHardDemo,
+    db,
+    performance_comparison,
+    economic_analysis,
+    secure_password_hashing,
         
     # Sabitler ve durum değişkenleri
     KHA_AVAILABLE,
