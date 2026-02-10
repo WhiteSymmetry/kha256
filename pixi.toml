@@ -1,0 +1,42 @@
+[workspace]
+preview = ["pixi-build"]
+authors = ["Mehmet Keçeci <mkececi@yaani.com>"]
+channels = ["pypi", "https://prefix.dev/conda-forge", "https://conda.modular.com/max-nightly", "conda-forge", "https://repo.prefix.dev/modular-community"]
+platforms = ["linux-64"]
+name = "kha256"
+version = "0.1.7"
+
+[package]
+name = "kha256"
+version = "0.1.7"
+license = "AGPL-3.0-or-later"
+
+[dependencies]
+python = ">=3.11"
+pip = ">=25.3"
+conda-build = ">=25.11.1"
+setuptools = ">=82.0.0"
+wheel = ">=0.45.1"
+hatchling = ">=1.28.0"
+setuptools_scm = ">=9.2.2"
+rattler-build = ">=0.55.0"
+quetz = ">=0.10.4"
+sqlalchemy = ">=2.0.45"
+
+[tasks]
+build = "python -m build"
+start = "python -c 'import kha256; print(kha256.__version__)'"
+lint = "ruff check ."
+fmt = "ruff format ."
+serve = { cmd = "python -m http.server", cwd = "docs" }
+install-kha256 = "pip install git+https://github.com/WhiteSymmetry/kha256"
+install = "pip install -e ."
+test = { depends-on = ["install"], cmd = "pytest" }
+install-deps = "pip install kha256"
+
+[package.build.backend]
+name = "pixi-build-python"
+version = "*"
+
+[package.host-dependencies]
+hatchling = "*"
