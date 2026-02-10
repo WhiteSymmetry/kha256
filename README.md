@@ -363,7 +363,7 @@ python -m kha256 --test
 
 ## 📄 Lisans
 
-Bu proje AGPL-3.0 lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakın.
+Bu proje AGPL-3.0-or-later lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakın.
 
 ```
 Copyright 2025 Mehmet Keçeci
