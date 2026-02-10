@@ -738,9 +738,9 @@ KHA-256 v0.1.1
 - Kuantum sonrası dönem için hazırlık
 ```
 
-# Pixi:
 
 ```
+# Pixi:
 
 [![Pixi](https://img.shields.io/badge/Pixi-Pixi-brightgreen.svg)](https://prefix.dev/channels/bilgi)
 
@@ -797,10 +797,10 @@ Copyright (c) 2025-2026 Mehmet Keçeci
 ```
 
 
+```
 
 # 🔐 Memory-Hard Hash Nedir? (What is Memory-Hard Hash?)
 
-```
 
 ## Hazırlayan: Mehmet Keçeci
 
@@ -888,8 +888,9 @@ Remember: There is a balance between security and performance.
 
 Using the right tool in the right place is the key to building both secure and efficient systems.
 
-```
 
 Örnek kullanım/sample usage:
 
 [![memory-hard](https://github.com/WhiteSymmetry/kha256/blob/main/notebooks/memory-hard.ipynb)](https://github.com/WhiteSymmetry/kha256/blob/main/notebooks/memory-hard.ipynb)
+
+```
