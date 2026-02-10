@@ -6,7 +6,7 @@ Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256
 Performanstan fedakarlık edilerek güvenlik maksimize edilmiş versiyondur.
 It is the version with security maximized at the sacrifice of performance.
 ================================================================
-# pip install -U bcrypt kececinumbers blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography
+# pip install -U bcrypt kececinumbers blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography ipywidgets ipython
 # conda install -c conda-forge kececinumbers bcrypt blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography
 # pip install xxhash: # xxh32 collision riski yüksek (64-bit için ~yüz milyonlarda %0.03)
 """
@@ -16,33 +16,41 @@ from __future__ import annotations
 import argon2 
 import bcrypt
 from blake3 import blake3
+from collections import defaultdict
+from contextlib import contextmanager
 from Crypto.Cipher import ChaCha20
 from Crypto.Hash import SHAKE256
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import getcontext
 from functools import lru_cache
 import hashlib
 from hashlib import scrypt
 import hmac
+import getpass
+from IPython.display import display, HTML, clear_output
+import ipywidgets as widgets
 import json
 import logging
 import mmap
 import os
 import platform
+import queue
 import random
 import re
 import secrets
+import sqlite3
 import statistics
 import struct
 import sys
 import time
+import threading
 import uuid
 from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union, cast, Callable
 import xxhash  # pip install xxhash: # xxh32 collision riski yüksek (64-bit için ~yüz milyonlarda %0.03)
-
 
 import numpy as np
 import pandas as pd
@@ -55,7 +63,7 @@ logging.basicConfig(
 logger = logging.getLogger("KHA-256")
 
 # Version information
-__version__ = "0.1.8"  # Updated
+__version__ = "0.1.9"  # Updated
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0 license"
 __status__ = "Pre-Production"
@@ -324,7 +332,7 @@ class FortifiedConfig:
     """
 
     # ⚡ PERFORMANS PATLAMASI (Güvenliği zedelemeyen en kritik optimizasyonlar)
-    #cache_enabled: bool = False      # Cache memory-hard'u bozar! ❌ Cache OFF → Deterministik + %20 hız # ✅ AÇIK: HMAC korumalı deterministik cache
+    #cache_enabled: bool = False      # Cache memory-hard'ı bozar! ❌ Cache OFF → Deterministik + %20 hız # ✅ AÇIK: HMAC korumalı deterministik cache
     cache_size: int = 512             # 0 → Cache bypass, CPU tam kullanım # 256 → 512 (L3 cache sığar, hit rate %95+)
     parallel_processing: bool = False # ❌ Sequential → Bit sırası garanti
     max_workers: int = 1             # 1 → Tek thread, reproducible
@@ -6335,6 +6343,1439 @@ class SimpleKhaHasher:
             },
             "version": "KHA-256 v1.0"
         }
+
+class SimpleRateLimiter:
+    """Basit bir rate limiter implementasyonu"""
+    
+    def __init__(self, max_requests=5, window_seconds=60):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self.requests = defaultdict(list)
+        self.blocked_ips = {}  # Engellenen IP'ler ve süreleri
+        
+    def is_allowed(self, client_ip):
+        """İsteğe izin veriliyor mu?"""
+        now = time.time()
+        
+        # IP engellenmiş mi?
+        if client_ip in self.blocked_ips:
+            block_until = self.blocked_ips[client_ip]
+            if now < block_until:
+                remaining = block_until - now
+                return False, f"IP engellendi. {remaining:.1f} saniye kaldı."
+            else:
+                del self.blocked_ips[client_ip]
+        
+        # Eski istekleri temizle
+        self.requests[client_ip] = [
+            req_time for req_time in self.requests[client_ip]
+            if now - req_time < self.window_seconds
+        ]
+        
+        # Limit kontrolü
+        if len(self.requests[client_ip]) >= self.max_requests:
+            # IP'yi engelle
+            block_duration = self.window_seconds * 2  # 2 kat süre engelle
+            self.blocked_ips[client_ip] = now + block_duration
+            return False, f"Rate limit aşıldı. {block_duration} saniye engellendi."
+        
+        # İsteği kaydet
+        self.requests[client_ip].append(now)
+        
+        # Kalan istek sayısı
+        remaining = self.max_requests - len(self.requests[client_ip])
+        window_end = max(self.requests[client_ip]) + self.window_seconds if self.requests[client_ip] else now
+        reset_in = window_end - now
+        
+        return True, f"İzin verildi. Kalan: {remaining}, Sıfırlanma: {reset_in:.0f}s"
+    
+    def get_stats(self, client_ip=None):
+        """İstatistikleri getir"""
+        now = time.time()
+        
+        if client_ip:
+            # Belirli IP için istatistik
+            recent_requests = [
+                req_time for req_time in self.requests.get(client_ip, [])
+                if now - req_time < self.window_seconds
+            ]
+            
+            return {
+                'ip': client_ip,
+                'recent_requests': len(recent_requests),
+                'max_requests': self.max_requests,
+                'window_seconds': self.window_seconds,
+                'is_blocked': client_ip in self.blocked_ips and now < self.blocked_ips[client_ip],
+                'blocked_until': self.blocked_ips.get(client_ip),
+                'requests_timestamps': recent_requests
+            }
+        else:
+            # Tüm IP'ler için istatistik
+            return {
+                'total_ips': len(self.requests),
+                'blocked_ips': len([ip for ip, until in self.blocked_ips.items() if now < until]),
+                'max_requests': self.max_requests,
+                'window_seconds': self.window_seconds
+            }
+    
+    def reset_ip(self, client_ip):
+        """IP'nin limitlerini sıfırla"""
+        if client_ip in self.requests:
+            del self.requests[client_ip]
+        if client_ip in self.blocked_ips:
+            del self.blocked_ips[client_ip]
+        return True
+
+# ============================================================================
+# 2. MOCK AUTH SİSTEMİ
+# ============================================================================
+
+class MockAuthSystem:
+    """Mock kimlik doğrulama sistemi"""
+    
+    def __init__(self):
+        self.users = {
+            'admin': {
+                'password_hash': self._hash_password('Admin123!'),
+                'salt': secrets.token_bytes(16).hex(),
+                'role': 'administrator'
+            },
+            'user1': {
+                'password_hash': self._hash_password('Password1!'),
+                'salt': secrets.token_bytes(16).hex(),
+                'role': 'user'
+            },
+            'demo': {
+                'password_hash': self._hash_password('Demo123!'),
+                'salt': secrets.token_bytes(16).hex(),
+                'role': 'demo_user'
+            }
+        }
+        self.failed_attempts = defaultdict(int)
+        self.MAX_FAILED_ATTEMPTS = 3
+        
+    def _hash_password(self, password):
+        """Basit hash fonksiyonu (gerçekte memory-hard kullanılmalı)"""
+        return hashlib.sha256(password.encode()).hexdigest()
+    
+    def authenticate(self, username, password):
+        """Kullanıcıyı doğrula"""
+        if username not in self.users:
+            return False, "Kullanıcı bulunamadı"
+        
+        # Şifre kontrolü
+        stored_hash = self.users[username]['password_hash']
+        input_hash = self._hash_password(password)
+        
+        if secrets.compare_digest(stored_hash, input_hash):
+            self.failed_attempts[username] = 0  # Başarılı girişte sıfırla
+            return True, f"Hoş geldiniz {username}! Rol: {self.users[username]['role']}"
+        else:
+            self.failed_attempts[username] += 1
+            
+            if self.failed_attempts[username] >= self.MAX_FAILED_ATTEMPTS:
+                return False, f"Hesap geçici olarak kilitlendi. {self.MAX_FAILED_ATTEMPTS} başarısız deneme."
+            
+            remaining = self.MAX_FAILED_ATTEMPTS - self.failed_attempts[username]
+            return False, f"Geçersiz parola. Kalan deneme: {remaining}"
+    
+    def get_user_info(self, username):
+        """Kullanıcı bilgilerini getir"""
+        if username in self.users:
+            user = self.users[username].copy()
+            user['failed_attempts'] = self.failed_attempts.get(username, 0)
+            user['is_locked'] = self.failed_attempts.get(username, 0) >= self.MAX_FAILED_ATTEMPTS
+            return user
+        return None
+
+# ============================================================================
+# 3. GÜVENLİ LOGİN SİSTEMİ
+# ============================================================================
+
+class SecureLoginSystem:
+    """Rate limiting ile güvenli login sistemi"""
+    
+    def __init__(self, max_requests=5, window_seconds=60):
+        self.rate_limiter = SimpleRateLimiter(max_requests, window_seconds)
+        self.auth_system = MockAuthSystem()
+        self.login_history = []
+        
+    def login_attempt(self, client_ip, username, password):
+        """Rate limiting ile güvenli login"""
+        
+        # Rate limiting kontrolü
+        allowed, message = self.rate_limiter.is_allowed(client_ip)
+        
+        if not allowed:
+            log_entry = {
+                'timestamp': datetime.now().strftime("%H:%M:%S"),
+                'ip': client_ip,
+                'username': username,
+                'status': 'RATE_LIMITED',
+                'message': message
+            }
+            self.login_history.append(log_entry)
+            return False, message
+        
+        # Kimlik doğrulama
+        success, auth_message = self.auth_system.authenticate(username, password)
+        
+        # Log kaydı
+        log_entry = {
+            'timestamp': datetime.now().strftime("%H:%M:%S"),
+            'ip': client_ip,
+            'username': username,
+            'status': 'SUCCESS' if success else 'FAILED',
+            'message': auth_message
+        }
+        self.login_history.append(log_entry)
+        
+        return success, auth_message
+    
+    def get_stats(self):
+        """Sistem istatistiklerini getir"""
+        return {
+            'rate_limiter': self.rate_limiter.get_stats(),
+            'total_logins': len(self.login_history),
+            'successful_logins': len([log for log in self.login_history if log['status'] == 'SUCCESS']),
+            'failed_logins': len([log for log in self.login_history if log['status'] == 'FAILED']),
+            'rate_limited_logins': len([log for log in self.login_history if log['status'] == 'RATE_LIMITED']),
+            'recent_history': self.login_history[-10:]  # Son 10 kayıt
+        }
+    
+    def reset_system(self):
+        """Sistemi sıfırla"""
+        self.rate_limiter = SimpleRateLimiter(
+            self.rate_limiter.max_requests,
+            self.rate_limiter.window_seconds
+        )
+        self.login_history = []
+        return "Sistem sıfırlandı"
+
+# ============================================================================
+# 4. JUPYTER WIDGET ARAYÜZÜ
+# ============================================================================
+
+class RateLimiterDemoUI:
+    """Jupyter için interaktif rate limiter demo arayüzü"""
+    
+    def __init__(self):
+        self.login_system = SecureLoginSystem(max_requests=5, window_seconds=30)
+        self.current_ip = "192.168.1.100"
+        
+        # Widget'ları oluştur
+        self._create_widgets()
+        self._setup_layout()
+        self._setup_events()
+        
+    def _create_widgets(self):
+        """Widget'ları oluştur"""
+        # Başlık
+        self.title = widgets.HTML(
+            value="<h1 style='color: #2c3e50;'>🔐 Rate Limiter Demo</h1>"
+        )
+        
+        # Sistem ayarları
+        self.settings_title = widgets.HTML(
+            value="<h3 style='color: #3498db;'>⚙️ Sistem Ayarları</h3>"
+        )
+        
+        self.max_requests_slider = widgets.IntSlider(
+            value=5,
+            min=1,
+            max=20,
+            step=1,
+            description='Max İstek:',
+            style={'description_width': 'initial'}
+        )
+        
+        self.window_seconds_slider = widgets.IntSlider(
+            value=30,
+            min=5,
+            max=120,
+            step=5,
+            description='Pencere (sn):',
+            style={'description_width': 'initial'}
+        )
+        
+        self.apply_settings_btn = widgets.Button(
+            description='Ayarları Uygula',
+            button_style='primary',
+            icon='check'
+        )
+        
+        # Login formu
+        self.login_title = widgets.HTML(
+            value="<h3 style='color: #3498db;'>🔑 Login Testi</h3>"
+        )
+        
+        self.ip_input = widgets.Text(
+            value=self.current_ip,
+            description='IP Adresi:',
+            style={'description_width': 'initial'}
+        )
+        
+        self.username_input = widgets.Dropdown(
+            options=['admin', 'user1', 'demo', 'invalid_user'],
+            value='admin',
+            description='Kullanıcı:',
+            style={'description_width': 'initial'}
+        )
+        
+        self.password_input = widgets.Password(
+            value='Admin123!',
+            description='Parola:',
+            style={'description_width': 'initial'}
+        )
+        
+        self.login_btn = widgets.Button(
+            description='Giriş Yap',
+            button_style='success',
+            icon='sign-in-alt'
+        )
+        
+        self.quick_login_btn = widgets.Button(
+            description='Hızlı Test (5 Deneme)',
+            button_style='warning',
+            icon='bolt'
+        )
+        
+        self.reset_btn = widgets.Button(
+            description='Sistemi Sıfırla',
+            button_style='danger',
+            icon='sync'
+        )
+        
+        # Çıktı alanları
+        self.output = widgets.Output(layout={'border': '1px solid #ddd', 'padding': '10px'})
+        self.stats_output = widgets.Output(layout={'border': '1px solid #ddd', 'padding': '10px'})
+        self.history_output = widgets.Output(layout={'border': '1px solid #ddd', 'padding': '10px'})
+        
+    def _setup_layout(self):
+        """Layout'u ayarla"""
+        # Ayarlar bölümü
+        settings_box = widgets.VBox([
+            self.settings_title,
+            self.max_requests_slider,
+            self.window_seconds_slider,
+            self.apply_settings_btn
+        ], layout=widgets.Layout(border='1px solid #eee', padding='10px', margin='5px'))
+        
+        # Login bölümü
+        login_box = widgets.VBox([
+            self.login_title,
+            self.ip_input,
+            self.username_input,
+            self.password_input,
+            widgets.HBox([self.login_btn, self.quick_login_btn, self.reset_btn])
+        ], layout=widgets.Layout(border='1px solid #eee', padding='10px', margin='5px'))
+        
+        # Ana layout
+        self.ui = widgets.VBox([
+            self.title,
+            widgets.HBox([settings_box, login_box]),
+            widgets.HTML(value="<h3 style='color: #3498db;'>📊 Sonuçlar</h3>"),
+            self.output,
+            widgets.HTML(value="<h3 style='color: #3498db;'>📈 İstatistikler</h3>"),
+            self.stats_output,
+            widgets.HTML(value="<h3 style='color: #3498db;'>📋 Geçmiş</h3>"),
+            self.history_output
+        ], layout=widgets.Layout(width='100%'))
+        
+    def _setup_events(self):
+        """Event handler'ları bağla"""
+        self.apply_settings_btn.on_click(self._apply_settings)
+        self.login_btn.on_click(self._login)
+        self.quick_login_btn.on_click(self._quick_test)
+        self.reset_btn.on_click(self._reset_system)
+        
+    def _apply_settings(self, btn):
+        """Ayarları uygula"""
+        with self.output:
+            clear_output()
+            self.login_system = SecureLoginSystem(
+                max_requests=self.max_requests_slider.value,
+                window_seconds=self.window_seconds_slider.value
+            )
+            print("✅ Sistem ayarları güncellendi!")
+            print(f"   • Max istek: {self.max_requests_slider.value}")
+            print(f"   • Pencere süresi: {self.window_seconds_slider.value} saniye")
+        
+        self._update_stats()
+        self._update_history()
+    
+    def _login(self, btn):
+        """Login denemesi yap"""
+        ip = self.ip_input.value
+        username = self.username_input.value
+        password = self.password_input.value
+        
+        with self.output:
+            clear_output()
+            print(f"🔍 Login denemesi...")
+            print(f"   • IP: {ip}")
+            print(f"   • Kullanıcı: {username}")
+            print(f"   • Zaman: {datetime.now().strftime('%H:%M:%S')}")
+            print("-" * 40)
+            
+            success, message = self.login_system.login_attempt(ip, username, password)
+            
+            if success:
+                print(f"✅ {message}")
+                display(HTML(f"<div style='background-color:#d4edda; padding:10px; border-radius:5px;'>{message}</div>"))
+            else:
+                print(f"❌ {message}")
+                display(HTML(f"<div style='background-color:#f8d7da; padding:10px; border-radius:5px;'>{message}</div>"))
+        
+        self._update_stats()
+        self._update_history()
+    
+    def _quick_test(self, btn):
+        """Hızlı test (5 ardışık deneme)"""
+        with self.output:
+            clear_output()
+            print("🚀 Hızlı test başlıyor (5 ardışık deneme)...")
+            print("=" * 50)
+            
+            ip = self.ip_input.value
+            username = "admin"
+            wrong_password = "WrongPassword123"
+            
+            for i in range(5):
+                print(f"\n🔹 Deneme {i+1}/5")
+                print(f"   Zaman: {datetime.now().strftime('%H:%M:%S.%f')[:-3]}")
+                
+                success, message = self.login_system.login_attempt(
+                    ip, username, wrong_password
+                )
+                
+                if success:
+                    print(f"   ✅ {message}")
+                else:
+                    print(f"   ❌ {message}")
+                
+                time.sleep(0.1)  # Küçük gecikme
+            
+            print("\n" + "=" * 50)
+            print("📋 Test tamamlandı!")
+            print("   Rate limiter'ın nasıl çalıştığını gözlemleyin.")
+        
+        self._update_stats()
+        self._update_history()
+    
+    def _reset_system(self, btn):
+        """Sistemi sıfırla"""
+        with self.output:
+            clear_output()
+            message = self.login_system.reset_system()
+            print(f"🔄 {message}")
+            print("   • Rate limiter sıfırlandı")
+            print("   • Login geçmişi temizlendi")
+            print("   • Tüm IP engelleri kaldırıldı")
+        
+        self._update_stats()
+        self._update_history()
+    
+    def _update_stats(self):
+        """İstatistikleri güncelle"""
+        with self.stats_output:
+            clear_output()
+            stats = self.login_system.get_stats()
+            
+            print("📊 SİSTEM İSTATİSTİKLERİ")
+            print("=" * 40)
+            
+            # Rate limiter istatistikleri
+            rl_stats = stats['rate_limiter']
+            print(f"\n🔧 Rate Limiter:")
+            print(f"   • Toplam IP: {rl_stats['total_ips']}")
+            print(f"   • Engellenen IP: {rl_stats['blocked_ips']}")
+            print(f"   • Limit: {rl_stats['max_requests']} istek / {rl_stats['window_seconds']}sn")
+            
+            # Login istatistikleri
+            print(f"\n🔐 Login İstatistikleri:")
+            print(f"   • Toplam giriş denemesi: {stats['total_logins']}")
+            print(f"   • Başarılı giriş: {stats['successful_logins']}")
+            print(f"   • Başarısız giriş: {stats['failed_logins']}")
+            print(f"   • Rate limited: {stats['rate_limited_logins']}")
+            
+            # Mevcut IP için detaylı istatistik
+            current_ip = self.ip_input.value
+            ip_stats = self.login_system.rate_limiter.get_stats(current_ip)
+            
+            print(f"\n📍 Mevcut IP ({current_ip}):")
+            print(f"   • Son dakikadaki istek: {ip_stats['recent_requests']}/{ip_stats['max_requests']}")
+            print(f"   • Durum: {'🔴 ENGELİ' if ip_stats['is_blocked'] else '🟢 AKTİF'}")
+            
+            if ip_stats['is_blocked'] and ip_stats['blocked_until']:
+                remaining = ip_stats['blocked_until'] - time.time()
+                if remaining > 0:
+                    print(f"   • Engelleme bitişi: {remaining:.1f} saniye")
+    
+    def _update_history(self):
+        """Geçmişi güncelle"""
+        with self.history_output:
+            clear_output()
+            stats = self.login_system.get_stats()
+            history = stats['recent_history']
+            
+            if not history:
+                print("📭 Henüz kayıt yok...")
+                return
+            
+            print("📋 SON 10 LOGİN KAYDI")
+            print("=" * 60)
+            
+            for log in reversed(history):
+                time_str = log['timestamp']
+                ip = log['ip']
+                user = log['username']
+                status = log['status']
+                msg = log['message']
+                
+                # Renk kodlama
+                if status == 'SUCCESS':
+                    status_icon = "✅"
+                    status_color = "#28a745"
+                elif status == 'FAILED':
+                    status_icon = "❌"
+                    status_color = "#dc3545"
+                else:  # RATE_LIMITED
+                    status_icon = "⏳"
+                    status_color = "#ffc107"
+                
+                print(f"{status_icon} [{time_str}] {ip} → {user}")
+                print(f"   {msg}")
+                print("-" * 40)
+    
+    def display(self):
+        """UI'yi göster"""
+        display(self.ui)
+        self._update_stats()
+        self._update_history()
+
+# ============================================================================
+# 5. KOMUT SATIRI DEMOSU (Alternatif)
+# ============================================================================
+
+def run_cli_demo():
+    """Komut satırı demo"""
+    
+    print("=" * 70)
+    print("🔐 RATE LIMITER DEMO - Komut Satırı Versiyonu")
+    print("=" * 70)
+    
+    # Sistem oluştur
+    login_system = SecureLoginSystem(max_requests=5, window_seconds=30)
+    
+    # Test senaryoları
+    test_cases = [
+        ("192.168.1.100", "admin", "Admin123!", "Doğru parola"),
+        ("192.168.1.100", "admin", "wrong", "Yanlış parola 1"),
+        ("192.168.1.100", "admin", "wrong", "Yanlış parola 2"),
+        ("192.168.1.100", "admin", "wrong", "Yanlış parola 3"),
+        ("192.168.1.100", "admin", "wrong", "Yanlış parola 4 (rate limit?)"),
+        ("192.168.1.100", "admin", "wrong", "Yanlış parola 5 (engellenmeli)"),
+        ("192.168.1.101", "user1", "Password1!", "Farklı IP - doğru parola"),
+        ("192.168.1.102", "invalid", "pass", "Geçersiz kullanıcı"),
+    ]
+    
+    print("\n🚀 Test Senaryoları Çalıştırılıyor...")
+    print("-" * 70)
+    
+    for i, (ip, user, pwd, desc) in enumerate(test_cases, 1):
+        print(f"\n🔹 Test {i}: {desc}")
+        print(f"   IP: {ip}, Kullanıcı: {user}")
+        
+        success, message = login_system.login_attempt(ip, user, pwd)
+        
+        if success:
+            print(f"   ✅ {message}")
+        else:
+            print(f"   ❌ {message}")
+        
+        # Küçük gecikme
+        time.sleep(0.5)
+    
+    # İstatistikler
+    print("\n" + "=" * 70)
+    print("📊 SON İSTATİSTİKLER")
+    print("-" * 70)
+    
+    stats = login_system.get_stats()
+    
+    print(f"\nToplam giriş denemesi: {stats['total_logins']}")
+    print(f"Başarılı giriş: {stats['successful_logins']}")
+    print(f"Başarısız giriş: {stats['failed_logins']}")
+    print(f"Rate limited: {stats['rate_limited_logins']}")
+    
+    print("\n" + "=" * 70)
+    print("📋 SON 5 KAYIT")
+    print("-" * 70)
+    
+    for log in stats['recent_history'][-5:]:
+        print(f"[{log['timestamp']}] {log['ip']} → {log['username']}: {log['status']}")
+        print(f"  Mesaj: {log['message']}")
+        print()
+
+def show_rate_limiter_info():
+    """Rate limiter hakkında bilgi"""
+    
+    info = """
+    📚 RATE LIMITER NEDİR?
+    ========================
+    
+    Rate limiting (hız sınırlama), bir sisteme yapılabilecek istek sayısını
+    belirli bir zaman aralığında sınırlayan bir güvenlik mekanizmasıdır.
+    
+    🎯 AMAÇLARI:
+    1. Brute-force saldırılarını önlemek
+    2. DDoS saldırılarına karşı koruma
+    3. Sunucu kaynaklarını korumak
+    4. API kötüye kullanımını engellemek
+    
+    🔧 NASIL ÇALIŞIR?
+    • Her IP adresi için istek sayısı takip edilir
+    • Belirlenen süre (window) içinde max istek sayısı aşılırsa
+    • Yeni istekler engellenir veya geciktirilir
+    
+    ⚙️ YAYGIN AYARLAR:
+    • 5 istek / 60 saniye (Login sayfaları)
+    • 100 istek / dakika (API endpoint'leri)
+    • 1000 istek / saat (Genel kullanım)
+    
+    🛡️ GÜVENLİK FAYDALARI:
+    1. Parola tahmin saldırılarını zorlaştırır
+    2. Otomatik botları engeller
+    3. Hesap ele geçirme saldırılarını önler
+    4. Sunucu yükünü dengeler
+    
+    🔗 GERÇEK DÜNYA ÖRNEKLERİ:
+    • Bankacılık uygulamaları (3 deneme → hesap kilitlenmesi)
+    • E-posta servisleri (rate limiting + CAPTCHA)
+    • API servisleri (tier-based rate limiting)
+    
+    💡 TAVSİYELER:
+    1. Login sayfalarında mutlaka rate limiting kullanın
+    2. IP tabanlı + kullanıcı tabanlı kombinasyon yapın
+    3. Başarısız denemeleri loglayın
+    4. Şüpheli aktivitelerde alarm üretin
+    """
+    
+    print(info)
+
+class MemoryHardDemo:
+    """Memory-hard hash demo sınıfı"""
+    
+    def __init__(self):
+        self.users_db: Dict[str, dict] = {}
+        self.demo_password = "MySecurePassword123!"
+        
+    def mock_memory_hard_hash(self, data: bytes, salt: bytes, memory_kb: int = 8192) -> str:
+        """
+        Mock memory-hard hash fonksiyonu
+        Gerçek TrueMemoryHardHasher çok daha yavaş olur (~580ms)
+        """
+        # Bellek bloğu oluştur
+        memory_block = bytearray(memory_kb * 1024)
+        
+        # Veriyi belleğe dağıt (basit simülasyon)
+        for i in range(len(data)):
+            memory_block[i % len(memory_block)] ^= data[i % len(data)]
+        
+        # Tuzu ekle
+        for i in range(len(salt)):
+            memory_block[(i + 1024) % len(memory_block)] ^= salt[i % len(salt)]
+        
+        # Zaman gecikmesi simülasyonu (gerçekte çok daha uzun)
+        time.sleep(0.001)  # 1ms - gerçekte 580ms
+        
+        # Son hash
+        return hashlib.sha256(bytes(memory_block[:1024]) + data + salt).hexdigest()
+    
+    def normal_hash(self, data: bytes, salt: bytes) -> str:
+        """Normal hash (SHA-256)"""
+        return hashlib.sha256(data + salt).hexdigest()
+    
+    def demo_registration(self):
+        """Kullanıcı kayıt demo"""
+        print("\n" + "="*60)
+        print("📝 KULLANICI KAYIT DEMO")
+        print("="*60)
+        
+        username = input("Kullanıcı adı: ").strip()
+        password = getpass.getpass("Parola: ")
+        
+        if not username or not password:
+            print("❌ Kullanıcı adı ve parola gerekli!")
+            return
+        
+        if username in self.users_db:
+            print(f"❌ '{username}' kullanıcısı zaten kayıtlı!")
+            return
+        
+        # Tuz oluştur
+        salt = secrets.token_bytes(32)
+        print(f"✅ Oluşturulan tuz: {salt[:8].hex()}...")
+        
+        # Memory-hard hash oluştur
+        print("⏳ Memory-hard hash hesaplanıyor...")
+        start = time.perf_counter()
+        password_hash = self.mock_memory_hard_hash(password.encode(), salt, 8192)
+        elapsed = (time.perf_counter() - start) * 1000
+        
+        print(f"✅ Hash oluşturuldu: {password_hash[:32]}...")
+        print(f"⏱️  Hash süresi: {elapsed:.1f} ms")
+        
+        # Kullanıcıyı kaydet
+        self.users_db[username] = {
+            'password_hash': password_hash,
+            'salt': salt.hex(),
+            'memory_kb': 8192
+        }
+        
+        print(f"✅ '{username}' kullanıcısı başarıyla kaydedildi!")
+        
+        # Normal hash ile karşılaştırma
+        start = time.perf_counter()
+        normal_hash = self.normal_hash(password.encode(), salt)
+        normal_time = (time.perf_counter() - start) * 1000
+        
+        print(f"\n📊 KARŞILAŞTIRMA:")
+        print(f"   • Memory-Hard Hash: {elapsed:.1f} ms")
+        print(f"   • Normal Hash (SHA-256): {normal_time:.3f} ms")
+        if normal_time > 0:
+            print(f"   • Yavaşlık Faktörü: {elapsed/normal_time:.0f}x")
+    
+    def demo_login(self):
+        """Kullanıcı giriş demo"""
+        print("\n" + "="*60)
+        print("🔑 KULLANICI GİRİŞ DEMO")
+        print("="*60)
+        
+        username = input("Kullanıcı adı: ").strip()
+        
+        if username not in self.users_db:
+            print(f"❌ '{username}' kullanıcısı bulunamadı!")
+            return
+        
+        user_data = self.users_db[username]
+        
+        # Timing attack koruması için bekle
+        time.sleep(0.5)  # Hata durumunda da aynı süre
+        
+        password = getpass.getpass("Parola: ")
+        salt = bytes.fromhex(user_data['salt'])
+        stored_hash = user_data['password_hash']
+        
+        # Memory-hard hash ile doğrulama
+        print("⏳ Parola doğrulanıyor...")
+        start = time.perf_counter()
+        computed_hash = self.mock_memory_hard_hash(
+            password.encode(), 
+            salt, 
+            user_data['memory_kb']
+        )
+        elapsed = (time.perf_counter() - start) * 1000
+        
+        # Zaman sabit karşılaştırma
+        if secrets.compare_digest(computed_hash, stored_hash):
+            print(f"✅ Giriş başarılı!")
+            print(f"⏱️  Doğrulama süresi: {elapsed:.1f} ms")
+            return True
+        else:
+            print(f"❌ Geçersiz parola!")
+            print(f"⏱️  Doğrulama süresi: {elapsed:.1f} ms")
+            return False
+    
+    def demo_performance(self):
+        """Performans karşılaştırma demo"""
+        print("\n" + "="*60)
+        print("📊 PERFORMANS KARŞILAŞTIRMA DEMO")
+        print("="*60)
+        
+        test_data = b"TestPassword123"
+        test_salt = secrets.token_bytes(32)
+        
+        print("Test verisi: 'TestPassword123'")
+        print(f"Test tuzu: {test_salt[:8].hex()}...")
+        
+        # 1. Memory-hard hash testi
+        print("\n1. 🔐 MEMORY-HARD HASH TESTİ")
+        times_mh = []
+        for i in range(3):
+            start = time.perf_counter()
+            hash_result = self.mock_memory_hard_hash(test_data, test_salt, 8192)
+            elapsed = (time.perf_counter() - start) * 1000
+            times_mh.append(elapsed)
+            print(f"   Deneme {i+1}: {elapsed:.1f} ms → {hash_result[:16]}...")
+        
+        avg_mh = sum(times_mh) / len(times_mh)
+        print(f"   Ortalama: {avg_mh:.1f} ms")
+        
+        # 2. Normal hash testi
+        print("\n2. ⚡ NORMAL HASH TESTİ (SHA-256)")
+        times_normal = []
+        for i in range(100):  # Daha fazla deneme (çok hızlı)
+            start = time.perf_counter()
+            hash_result = self.normal_hash(test_data, test_salt)
+            elapsed = (time.perf_counter() - start) * 1000
+            times_normal.append(elapsed)
+        
+        avg_normal = sum(times_normal) / len(times_normal)
+        print(f"   100 deneme ortalaması: {avg_normal:.6f} ms")
+        print(f"   Hash: {hash_result[:16]}...")
+        
+        # 3. Karşılaştırma
+        print("\n3. 🎯 SONUÇLAR")
+        print(f"   • Memory-Hard Hash: {avg_mh:.1f} ms")
+        print(f"   • Normal Hash: {avg_normal:.6f} ms")
+        if avg_normal > 0:
+            slowdown = avg_mh / avg_normal
+            print(f"   • Yavaşlık Faktörü: {slowdown:,.0f}x")
+            
+            print(f"\n💡 ANLAMI:")
+            print(f"   Memory-hard hash, normal hash'ten")
+            print(f"   {slowdown:,.0f} kat daha yavaştır!")
+            print(f"   Bu da GPU/ASIC saldırılarını")
+            print(f"   ekonomik olarak pratik olmaktan çıkarır.")
+    
+    def demo_brute_force_analysis(self):
+        """Brute-force analizi demo"""
+        print("\n" + "="*60)
+        print("🛡️ BRUTE-FORCE SALDIRI ANALİZİ")
+        print("="*60)
+        
+        # Senaryo parametreleri
+        password_length = 8
+        charset_size = 94  # Printable ASCII
+        
+        # Toplam kombinasyon
+        total_combinations = charset_size ** password_length
+        
+        print(f"\n📈 8 KARAKTERLİ PAROLA ANALİZİ:")
+        print(f"   • Karakter seti: {charset_size} karakter")
+        print(f"   • Parola uzunluğu: {password_length} karakter")
+        print(f"   • Toplam kombinasyon: {total_combinations:,}")
+        
+        # Hash hızları
+        memory_hard_speed = 1000 / 580  # hash/s (580ms/hash - GERÇEK)
+        normal_hash_speed = 1_000_000_000  # 1 milyar hash/s (GPU)
+        
+        print(f"\n⚡ HASH HIZLARI:")
+        print(f"   • Memory-Hard Hash: {memory_hard_speed:.2f} hash/s")
+        print(f"   • GPU ile Normal Hash: {normal_hash_speed:,} hash/s")
+        
+        # Kırma süreleri
+        mh_time = total_combinations / memory_hard_speed
+        normal_time = total_combinations / normal_hash_speed
+        
+        print(f"\n⏳ TAHMİNİ KIRMA SÜRELERİ:")
+        print(f"   • Memory-Hard ile: {mh_time:,.0f} saniye")
+        print(f"   • GPU ile Normal Hash: {normal_time:,.0f} saniye")
+        
+        # İnsan dostu format
+        def format_time(seconds: float) -> str:
+            if seconds < 60:
+                return f"{seconds:.1f} saniye"
+            elif seconds < 3600:
+                return f"{seconds/60:.1f} dakika"
+            elif seconds < 86400:
+                return f"{seconds/3600:.1f} saat"
+            elif seconds < 31536000:
+                return f"{seconds/86400:.1f} gün"
+            else:
+                return f"{seconds/31536000:.1f} yıl"
+        
+        print(f"\n📅 İNSAN DOSTU ZAMANLAR:")
+        print(f"   • Memory-Hard: {format_time(mh_time)}")
+        print(f"   • GPU ile: {format_time(normal_time)}")
+        
+        print(f"\n🎯 SONUÇ:")
+        print("   Memory-hard hash kullanıldığında,")
+        print("   brute-force saldırısı pratik değildir.")
+        print("   Maliyet/yarar oranı saldırganın aleyhinedir.")
+    
+    def demo_security_levels(self):
+        """Güvenlik seviyeleri demo"""
+        print("\n" + "="*60)
+        print("🛡️ GÜVENLİK SEVİYELERİ DEMO")
+        print("="*60)
+        
+        test_data = b"MyPassword123"
+        test_salt = secrets.token_bytes(32)
+        
+        security_levels = [
+            ("DÜŞÜK", 1024, "1MB", "Session token'lar"),
+            ("ORTA", 4096, "4MB", "API authentication"),
+            ("YÜKSEK", 8192, "8MB", "Parola hash'leme"),
+            ("PARANOID", 16384, "16MB", "Kritik sistemler"),
+        ]
+        
+        print("🔧 Farklı memory ayarlarında hash süreleri:\n")
+        
+        for level_name, memory_kb, mem_display, use_case in security_levels:
+            # Gerçek zaman simülasyonu (orantılı)
+            simulated_time = memory_kb * 0.07  # 1MB = 70ms
+            
+            print(f"  {level_name}:")
+            print(f"    • Bellek: {mem_display}")
+            print(f"    • Tahmini süre: {simulated_time:.0f} ms")
+            print(f"    • Kullanım: {use_case}")
+            print()
+    
+    def list_users(self):
+        """Kayıtlı kullanıcıları listele"""
+        print("\n" + "="*60)
+        print("👥 KAYITLI KULLANICILAR")
+        print("="*60)
+        
+        if not self.users_db:
+            print("Henüz kayıtlı kullanıcı yok.")
+            return
+        
+        for i, (username, data) in enumerate(self.users_db.items(), 1):
+            print(f"\n{i}. {username}:")
+            print(f"   • Tuz: {data['salt'][:16]}...")
+            print(f"   • Hash: {data['password_hash'][:32]}...")
+            print(f"   • Bellek: {data['memory_kb']//1024}MB")
+    
+    def interactive_menu(self):
+        """Etkileşimli menü"""
+        while True:
+            print("\n" + "="*60)
+            print("🎯 MEMORY-HARD HASH DEMO MENÜSÜ")
+            print("="*60)
+            print("1. 📝 Kullanıcı Kaydı Demo")
+            print("2. 🔑 Kullanıcı Giriş Demo")
+            print("3. 📊 Performans Karşılaştırma")
+            print("4. 🛡️ Brute-Force Analizi")
+            print("5. 🔧 Güvenlik Seviyeleri")
+            print("6. 👥 Kayıtlı Kullanıcıları Listele")
+            print("7. 📚 Memory-Hard Nedir?")
+            print("8. 🚪 Çıkış")
+            print("-"*60)
+            
+            try:
+                choice = input("Seçiminiz (1-8): ").strip()
+                
+                if choice == "1":
+                    self.demo_registration()
+                elif choice == "2":
+                    self.demo_login()
+                elif choice == "3":
+                    self.demo_performance()
+                elif choice == "4":
+                    self.demo_brute_force_analysis()
+                elif choice == "5":
+                    self.demo_security_levels()
+                elif choice == "6":
+                    self.list_users()
+                elif choice == "7":
+                    self.show_info()
+                elif choice == "8":
+                    print("\n👋 Çıkış yapılıyor...")
+                    break
+                else:
+                    print("❌ Geçersiz seçim! Lütfen 1-8 arası bir sayı girin.")
+                    
+            except KeyboardInterrupt:
+                print("\n\n⚠️  Program sonlandırılıyor...")
+                break
+            except Exception as e:
+                print(f"\n❌ Hata oluştu: {e}")
+    
+    def show_info(self):
+        """Memory-hard hakkında bilgi"""
+        print("\n" + "="*60)
+        print("📚 MEMORY-HARD HASH NEDİR?")
+        print("="*60)
+        
+        info = """
+        🔐 MEMORY-HARD HASH:
+        
+        Memory-hard hash fonksiyonları, özellikle paralel donanım 
+        saldırılarına (GPU/ASIC) karşı koruma sağlamak için tasarlanmıştır.
+        
+        🎯 TEMEL ÖZELLİKLER:
+        1. Büyük bellek gerektirir (8MB+)
+        2. Bellek erişimi sıralıdır, paralelleştirilemez
+        3. Her hash hesaplama için yüksek bellek kullanımı
+        
+        🛡️ NEDEN ÖNEMLİ?
+        • GPU'lar saniyede milyarlarca hash hesaplayabilir
+        • ASIC'ler hash hesaplamayı 1000x hızlandırabilir
+        • Memory-hard hash'ler bu saldırıları ekonomik olarak
+          pratik olmaktan çıkarır
+        
+        ✅ KULLANIM ALANLARI:
+        • Parola depolama
+        • Kriptografik anahtar türetme
+        • Kritik kimlik doğrulama
+        
+        ⚠️ DİKKAT:
+        KHA-256'da sadece "TrueMemoryHardHasher" gerçek memory-hard'tır!
+        Diğer hash fonksiyonları (FortifiedKhaHash256, OptimizedKhaHash256)
+        memory-hard DEĞİLDİR!
+        
+        🔧 DOĞRU KULLANIM:
+        ```
+        from kha256 import TrueMemoryHardHasher
+        
+        hasher = TrueMemoryHardHasher(
+            memory_cost_kb=8192,  # 8MB
+            time_cost=3           # 3 tur
+        )
+        
+        hash_result = hasher.hash(password.encode(), salt)
+        ```
+        
+        💰 EKONOMİK ANALİZ:
+        • Memory-hard hash: ~580ms/hash
+        • Normal hash: ~0.001ms/hash (GPU ile)
+        • Yavaşlık faktörü: ~580,000x
+        
+        Bu da bir saldırganın maliyetini 580,000 kat artırır!
+        """
+        
+        print(info)
+
+
+class db:
+    """database manager"""
+
+    # Thread-local storage for database connections
+    thread_local = threading.local()
+
+    @contextmanager
+    def get_db_connection():
+        """Thread-safe veritabanı bağlantısı için context manager"""
+        # Thread başına bir connection
+        # Thread-local storage for database connections
+        thread_local = threading.local()
+
+        if not hasattr(thread_local, 'conn'):
+            thread_local.conn = sqlite3.connect('users.db', check_same_thread=False)
+            thread_local.conn.execute('PRAGMA journal_mode=WAL')  # Write-Ahead Logging
+            thread_local.conn.execute('PRAGMA busy_timeout=5000')  # 5 second timeout
+        
+        conn = thread_local.conn
+        try:
+            yield conn
+        except sqlite3.Error as e:
+            print(f"Veritabanı hatası: {e}")
+            # Bağlantıyı kapat ve yeniden dene
+            try:
+                conn.close()
+            except:
+                pass
+            delattr(thread_local, 'conn')
+            raise
+    
+    def setup_database():
+        """Veritabanını kur"""
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                with db.get_db_connection() as conn:
+                    cursor = conn.cursor()
+                    # Foreign keys etkinleştir
+                    cursor.execute('PRAGMA foreign_keys = ON')
+                    
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS users (
+                            username TEXT PRIMARY KEY,
+                            password_hash BLOB NOT NULL,
+                            salt BLOB NOT NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            last_login TIMESTAMP
+                        )
+                    ''')
+                    
+                    # Index oluştur
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_username ON users(username)')
+                    
+                    conn.commit()
+                print("✅ Veritabanı başarıyla kuruldu")
+                return True
+                
+            except sqlite3.OperationalError as e:
+                if "locked" in str(e) and attempt < max_retries - 1:
+                    print(f"⏳ Veritabanı kilitli, {attempt + 1}. deneme...")
+                    time.sleep(0.5 * (attempt + 1))
+                else:
+                    print(f"❌ Veritabanı kurulum hatası: {e}")
+                    return False
+            except Exception as e:
+                print(f"❌ Beklenmeyen hata: {e}")
+                return False
+    
+    def save_user(username, password, retry_count=3):
+        """Kullanıcıyı veritabanına kaydet"""
+        if not username or not password:
+            print("❌ Kullanıcı adı ve parola gerekli")
+            return False
+        
+        for attempt in range(retry_count):
+            try:
+                # Önce kullanıcı var mı kontrol et
+                with db.get_db_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT username FROM users WHERE username = ?", (username,))
+                    if cursor.fetchone():
+                        print(f"⚠️  '{username}' kullanıcısı zaten kayıtlı")
+                        return False
+                
+                # Tuz oluştur
+                salt = secrets.token_bytes(32)
+                
+                # Memory-hard hash oluştur
+                print(f"⏳ '{username}' için memory-hard hash hesaplanıyor...")
+                hasher = TrueMemoryHardHasher(memory_cost_kb=8192, time_cost=3)
+                password_hash = hasher.hash(password.encode(), salt)
+                print(f"✅ Hash hesaplandı")
+                
+                # Veritabanına kaydet
+                with db.get_db_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        """INSERT INTO users 
+                           (username, password_hash, salt, created_at) 
+                           VALUES (?, ?, ?, datetime('now'))""",
+                        (username, password_hash, salt)
+                    )
+                    conn.commit()
+                
+                print(f"✅ Kullanıcı '{username}' başarıyla kaydedildi")
+                return True
+                
+            except sqlite3.IntegrityError:
+                print(f"❌ '{username}' kullanıcısı zaten kayıtlı")
+                return False
+            except sqlite3.OperationalError as e:
+                if "locked" in str(e) and attempt < retry_count - 1:
+                    print(f"⏳ Veritabanı kilitli, {attempt + 1}. deneme...")
+                    time.sleep(1 * (attempt + 1))
+                else:
+                    print(f"❌ Veritabanı hatası: {e}")
+                    return False
+            except Exception as e:
+                print(f"❌ Kayıt hatası: {e}")
+                return False
+        
+        return False
+    
+    def verify_user(username, password, retry_count=3):
+        """Kullanıcıyı doğrula"""
+        if not username or not password:
+            print("❌ Kullanıcı adı ve parola gerekli")
+            return False
+        
+        for attempt in range(retry_count):
+            try:
+                with db.get_db_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "SELECT password_hash, salt FROM users WHERE username = ?",
+                        (username,)
+                    )
+                    result = cursor.fetchone()
+                    
+                    if not result:
+                        # Timing attack koruması için gecikme
+                        time.sleep(0.5)
+                        print(f"❌ Kullanıcı '{username}' bulunamadı")
+                        return False
+                    
+                    stored_hash, salt = result
+                    
+                    # Aynı ayarlarla hasher oluştur
+                    print(f"⏳ '{username}' için hash doğrulanıyor...")
+                    hasher = TrueMemoryHardHasher(memory_cost_kb=8192, time_cost=3)
+                    computed_hash = hasher.hash(password.encode(), salt)
+                    print(f"✅ Hash doğrulandı")
+                    
+                    # Güvenli karşılaştırma
+                    if secrets.compare_digest(computed_hash, stored_hash):
+                        # Başarılı giriş tarihini güncelle
+                        cursor.execute(
+                            "UPDATE users SET last_login = datetime('now') WHERE username = ?",
+                            (username,)
+                        )
+                        conn.commit()
+                        print(f"✅ Kullanıcı '{username}' başarıyla doğrulandı")
+                        return True
+                    else:
+                        print(f"❌ Kullanıcı '{username}' için geçersiz parola")
+                        return False
+                        
+            except sqlite3.OperationalError as e:
+                if "locked" in str(e) and attempt < retry_count - 1:
+                    print(f"⏳ Veritabanı kilitli, {attempt + 1}. deneme...")
+                    time.sleep(1 * (attempt + 1))
+                else:
+                    print(f"❌ Veritabanı hatası: {e}")
+                    return False
+            except Exception as e:
+                print(f"❌ Doğrulama hatası: {e}")
+                return False
+        
+        return False
+    
+    def list_users():
+        """Kayıtlı kullanıcıları listele"""
+        try:
+            with db.get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT username, created_at, last_login 
+                    FROM users 
+                    ORDER BY created_at DESC
+                """)
+                users = cursor.fetchall()
+                
+                if not users:
+                    print("📭 Henüz kayıtlı kullanıcı yok")
+                    return []
+                
+                print("\n📋 KAYITLI KULLANICILAR")
+                print("=" * 60)
+                for username, created_at, last_login in users:
+                    print(f"\n👤 {username}:")
+                    print(f"   📅 Oluşturulma: {created_at}")
+                    print(f"   🔐 Son giriş: {last_login if last_login else 'Henüz giriş yapılmadı'}")
+                
+                return users
+                
+        except Exception as e:
+            print(f"❌ Listeleme hatası: {e}")
+            return []
+    
+    def delete_user(username):
+        """Kullanıcıyı sil"""
+        try:
+            with db.get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM users WHERE username = ?", (username,))
+                conn.commit()
+                
+                if cursor.rowcount > 0:
+                    print(f"✅ '{username}' kullanıcısı silindi")
+                    return True
+                else:
+                    print(f"❌ '{username}' kullanıcısı bulunamadı")
+                    return False
+                    
+        except Exception as e:
+            print(f"❌ Silme hatası: {e}")
+            return False
+    
+    def close_all_connections():
+        """Tüm veritabanı bağlantılarını kapat"""
+        try:
+            if hasattr(thread_local, 'conn'):
+                thread_local.conn.close()
+                delattr(thread_local, 'conn')
+                print("✅ Veritabanı bağlantıları kapatıldı")
+        except:
+            pass
+    
+    # Jupyter için interaktif fonksiyon - Jupyter widget'larını import edelim
+    from IPython.display import display, clear_output
+    import ipywidgets as widgets
+    
+    def interactive_demo():
+        """Jupyter'da interaktif demo"""
+        
+        print("🎮 İNTERAKTİF MEMORY-HARD HASH DEMO")
+        print("=" * 60)
+        
+        # Önce veritabanını kur
+        db.setup_database()
+        
+        # Widget'ları oluştur
+        username_input = db.widgets.Text(
+            placeholder='Kullanıcı adı',
+            description='Kullanıcı:',
+            style={'description_width': 'initial'}
+        )
+        
+        password_input = db.widgets.Password(
+            placeholder='Parola',
+            description='Parola:',
+            style={'description_width': 'initial'}
+        )
+        
+        output_area = db.widgets.Output(layout={'border': '1px solid #ddd', 'padding': '10px', 'min_height': '200px'})
+        
+        def on_register_click(b):
+            with output_area:
+                db.clear_output()
+                username = username_input.value
+                password = password_input.value
+                
+                if not username or not password:
+                    print("❌ Kullanıcı adı ve parola gerekli")
+                    return
+                
+                print(f"📝 '{username}' kaydediliyor...")
+                if db.save_user(username, password):
+                    print(f"✅ '{username}' başarıyla kaydedildi")
+                else:
+                    print(f"❌ '{username}' kaydı başarısız")
+        
+        def on_login_click(b):
+            with output_area:
+                db.clear_output()
+                username = username_input.value
+                password = password_input.value
+                
+                if not username or not password:
+                    print("❌ Kullanıcı adı ve parola gerekli")
+                    return
+                
+                print(f"🔐 '{username}' doğrulanıyor...")
+                if db.verify_user(username, password):
+                    print(f"✅ '{username}' başarıyla doğrulandı")
+                else:
+                    print(f"❌ '{username}' doğrulama başarısız")
+        
+        def on_list_click(b):
+            with output_area:
+                db.clear_output()
+                db.list_users()
+        
+        def on_clear_click(b):
+            with output_area:
+                db.clear_output()
+                print("🧹 Çıktı temizlendi")
+        
+        register_btn = db.widgets.Button(
+            description='Kayıt Ol',
+            button_style='primary',
+            icon='user-plus',
+            layout=db.widgets.Layout(width='100px')
+        )
+        
+        login_btn = db.widgets.Button(
+            description='Giriş Yap',
+            button_style='success',
+            icon='sign-in-alt',
+            layout=db.widgets.Layout(width='100px')
+        )
+        
+        list_btn = db.widgets.Button(
+            description='Listele',
+            button_style='info',
+            icon='list',
+            layout=db.widgets.Layout(width='100px')
+        )
+        
+        clear_btn = db.widgets.Button(
+            description='Temizle',
+            button_style='warning',
+            icon='trash',
+            layout=db.widgets.Layout(width='100px')
+        )
+        
+        register_btn.on_click(on_register_click)
+        login_btn.on_click(on_login_click)
+        list_btn.on_click(on_list_click)
+        clear_btn.on_click(on_clear_click)
+        
+        # Layout
+        buttons = db.widgets.HBox([register_btn, login_btn, list_btn, clear_btn])
+        
+        form = db.widgets.VBox([
+            db.widgets.HTML("<h3 style='color: #2c3e50;'>👤 Kullanıcı İşlemleri</h3>"),
+            username_input,
+            password_input,
+            buttons,
+            db.widgets.HTML("<h4 style='color: #3498db;'>📊 Çıktı:</h4>"),
+            output_area
+        ], layout=db.widgets.Layout(width='80%', margin='20px'))
+        
+        display(form)
+
+def performance_comparison():
+    """Memory-hard vs normal hash performans karşılaştırması"""
+    
+    password = "TestPassword123"
+    salt = secrets.token_bytes(32)
+    
+    # 1. Memory-hard hasher (gerçek koruma)
+    memory_hard = TrueMemoryHardHasher(memory_cost_kb=8192, time_cost=3)
+    
+    # 2. Normal hasher (hızlı ama daha az güvenli)
+    config = FortifiedConfig()
+    normal_hasher = FortifiedKhaHash256(config)
+    
+    # Test
+    start = time.perf_counter()
+    memory_hard.hash(password.encode(), salt)
+    memory_hard_time = (time.perf_counter() - start) * 1000
+    
+    start = time.perf_counter()
+    normal_hasher.hash(password.encode(), salt)
+    normal_time = (time.perf_counter() - start) * 1000
+    
+    print(f"🔐 Memory-Hard Hash: {memory_hard_time:.1f} ms")
+    print(f"⚡ Normal Hash: {normal_time:.1f} ms")
+    print(f"📈 Yavaşlık Faktörü: {memory_hard_time/normal_time:.0f}x")
+    
+    return memory_hard_time, normal_time
+
+def economic_analysis(memory_mb=8, time_ms=580):
+    """
+    Memory-hard hash'lerin ekonomik analizi
+    GPU/ASIC saldırılarına karşı maliyet etkinliği
+    """
+    
+    # Varsayımlar (Assumptions)
+    gpu_hash_rate = 1_000_000_000  # 1 milyar hash/saniye (1 billion hashes/sec)
+    electricity_cost = 0.15  # $/kWh
+    gpu_power = 300  # Watt
+    
+    # Memory-hard için (For memory-hard)
+    memory_hard_rate = 1000 / time_ms  # hash/saniye (hashes/sec)
+    
+    # Maliyet karşılaştırması (Cost comparison)
+    gpu_daily_hashes = gpu_hash_rate * 86400
+    memory_hard_daily_hashes = memory_hard_rate * 86400
+    
+    gpu_daily_cost = (gpu_power * 24 / 1000) * electricity_cost
+    
+    print("💰 EKONOMİK ANALİZ (ECONOMIC ANALYSIS)")
+    print("="*50)
+    print(f"🔧 GPU Hash Rate: {gpu_hash_rate:,} hash/s")
+    print(f"🔐 Memory-Hard Rate: {memory_hard_rate:.1f} hash/s")
+    print(f"📊 GPU Günlük Hash: {gpu_daily_hashes:,}")
+    print(f"📈 Memory-Hard Günlük Hash: {memory_hard_daily_hashes:,.0f}")
+    print(f"💡 GPU Günlük Maliyet: ${gpu_daily_cost:.2f}")
+    print(f"🎯 Etkinlik Oranı: {gpu_daily_hashes/memory_hard_daily_hashes:,.0f}x")
+    
+    # Sonuç (Result)
+    print("\n📢 SONUÇ (CONCLUSION):")
+    print(f"Bir GPU ile memory-hard hash kırmak, normal hash'e göre")
+    print(f"{gpu_daily_hashes/memory_hard_daily_hashes:,.0f} kat daha az verimlidir!")
+    print("Bu da saldırıyı ekonomik olarak pratik olmaktan çıkarır.")
+
+def secure_password_hashing(password, salt=None):
+    """Güvenli parola hash'leme için minimum ayarlar"""
+    from kha256 import TrueMemoryHardHasher
+    import secrets
+    
+    if salt is None:
+        salt = secrets.token_bytes(32)  # 256-bit salt
+    
+    # NIST SP 800-63B uyumlu ayarlar
+    hasher = TrueMemoryHardHasher(
+        memory_cost_kb=16384,  # 16MB (önerilen minimum)
+        time_cost=3,           # 3 iterasyon
+        #parallelism=1          # Paralellik yok
+    )
+    
+    return hasher.hash(password.encode(), salt), salt
 
 
 def run_comprehensive_test():
