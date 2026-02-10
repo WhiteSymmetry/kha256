@@ -790,3 +790,97 @@ Author-email: Mehmet Keçeci <...>
 License: GNU AFFERO GENERAL PUBLIC LICENSE
 
 Copyright (c) 2025-2026 Mehmet Keçeci
+
+---
+
+# 🔐 Memory-Hard Hash Nedir? (What is Memory-Hard Hash?)
+
+## Hazırlayan: Mehmet Keçeci
+
+## 📚 Tanım (Definition)
+
+**Memory-hard hash fonksiyonları**, özellikle paralel donanım saldırılarına (GPU/ASIC) karşı koruma sağlamak için tasarlanmış kriptografik fonksiyonlardır. Bu fonksiyonların temel özelliği, hesaplama süresinin **büyük miktarda belleğe erişim gerektirmesi** ve bu belleğin paralel olarak azaltılamamasıdır.
+
+**Memory-hard hash functions** are cryptographic functions designed to provide protection against parallel hardware attacks (GPU/ASIC). Their key characteristic is that computation time **requires access to large amounts of memory**, and this memory cannot be reduced through parallelism.
+
+## 🎯 Neden Önemli? (Why is it Important?)
+
+### Saldırı Senaryoları (Attack Scenarios):
+- **GPU Saldırıları**: Bir GPU, saniyede milyarlarca hash hesaplayabilir
+- **ASIC Saldırıları**: Özel donanım, hash hesaplamayı 1000x hızlandırabilir
+- **Rainbow Table Saldırıları**: Önceden hesaplanmış hash tabloları
+
+### Koruma (Protection):
+Memory-hard hash'ler bu saldırıları ekonomik olarak **pratik olmayan** hale getirir çünkü:
+- Her hash için büyük bellek gerektirir (8MB+)
+- Bellek erişimi sıralıdır, paralelleştirilemez
+- Maliyet/yarar oranı saldırganın lehine değildir
+
+## 🏆 KHA-256'da Memory-Hard Kullanımı
+
+### ⚠️ ÖNEMLİ UYARI (IMPORTANT WARNING):
+KHA-256'da **sadece `TrueMemoryHardHasher` gerçek memory-hard'tır!** Diğer tüm hash'ler (FortifiedKhaHash256, OptimizedKhaHash256 vb.) **memory-hard DEĞİLDİR**.
+
+### ✅ Doğru Kullanım (Correct Usage):
+
+🎯 Kullanım Alanları (Use Cases)
+✅ Memory-Hard KULLANILMALI (Use Memory-Hard):
+
+    Parola Depolama (Password Storage)
+    Kriptografik Anahtar Türetme (Cryptographic Key Derivation)
+    Çok Kritik Kimlik Doğrulama (Critical Authentication)
+    Yüksek Değerli Veri Koruma (High-Value Data Protection)
+
+❌ Memory-Hard KULLANILMAMALI (Don't Use Memory-Hard):
+
+    Dosya Checksum/Doğrulama (File Checksum/Verification)
+    Session Token'ları (Session Tokens)
+    API İstek Doğrulama (API Request Validation)
+    Büyük Veri Akışları (Large Data Streams)
+
+📚 ÖĞRENİLENLER:
+   • Memory-hard hash'ler GPU/ASIC saldırılarına karşı korur
+   • KHA-256'da sadece TrueMemoryHardHasher kullanılmalı
+   • Güvenlik ve performans arasında denge vardır
+   • Doğru aracı doğru yerde kullanmak önemlidir
+
+🔗 Gerçek KHA-256 kullanımı:
+   from kha256 import TrueMemoryHardHasher
+   hasher = TrueMemoryHardHasher(memory_cost_kb=8192, time_cost=3)
+
+📈 Performans/Güvenlik Dengesi
+
+Önemli Not: Güvenlik ve performans arasında bir denge (trade-off) vardır. Bu şu anlama gelir:
+
+    Daha yüksek güvenlik → Daha yavaş performans
+    Daha hızlı performans → Daha düşük güvenlik
+
+Memory-hard hash'ler bu dengenin güvenlik tarafında yer alır.
+Gereksinim (Requirement) 	Önerilen Hasher (Recommended Hasher) 	Süre (Time) 	Bellek (Memory) 	Güvenlik Seviyesi
+Parola Depolama (Password Storage) 	TrueMemoryHardHasher 	580ms 	8MB 	🔴 YÜKSEK
+
+*Config ile memory-hard fakat gerçek memory-hard DEĞİL
+
+🎯 SON SÖZ (FINAL WORD)
+
+Memory-hard hash'ler GPU/ASIC saldırılarına karşı en iyi savunmadır. KHA-256'da bu korumayı elde etmek için yalnızca TrueMemoryHardHasher kullanın. Diğer tüm hash fonksiyonları performans için optimize edilmiştir ve memory-hard DEĞİLDİR.
+
+Unutmayın: Güvenlik ve performans arasında bir denge vardır.
+
+    Kritik veriler (parolalar, anahtarlar) için → Güvenliği tercih edin (TrueMemoryHardHasher)
+    Performans kritik uygulamalar (dosya doğrulama, API) için → Hızı tercih edin (Optimized/Hybrid hash'ler)
+
+Doğru aracı doğru yerde kullanmak, hem güvenli hem de verimli sistemler oluşturmanın anahtarıdır.
+
+Memory-hard hashes are the best defense against GPU/ASIC attacks. In KHA-256, to obtain this protection use only TrueMemoryHardHasher. All other hash functions are optimized for performance and are NOT memory-hard.
+
+Remember: There is a balance between security and performance.
+
+    For critical data (passwords, keys) → Choose security (TrueMemoryHardHasher)
+    For performance-critical applications (file verification, API) → Choose speed (Optimized/Hybrid hashes)
+
+Using the right tool in the right place is the key to building both secure and efficient systems.
+
+Örnek kullanım/sample usage:
+
+[![memory-hard](https://github.com/WhiteSymmetry/kha256/blob/main/notebooks/memory-hard.ipynb)](https://github.com/WhiteSymmetry/kha256/blob/main/notebooks/memory-hard.ipynb)
