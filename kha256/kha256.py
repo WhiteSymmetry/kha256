@@ -17,6 +17,7 @@ import argon2
 import bcrypt
 from blake3 import blake3
 from Crypto.Cipher import ChaCha20
+from Crypto.Hash import SHAKE256
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes
@@ -54,7 +55,7 @@ logging.basicConfig(
 logger = logging.getLogger("KHA-256")
 
 # Version information
-__version__ = "0.1.6"  # Updated
+__version__ = "0.1.8"  # Updated
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0 license"
 __status__ = "Pre-Production"
@@ -260,7 +261,7 @@ class FortifiedConfig:
     performans %95+ hedeflenir. NIST SP 800-132/63B/90B uyumlu.
     """
 
-    VERSION: ClassVar[str] = "0.1.4"
+    VERSION: ClassVar[str] = "0.1.8"
     ALGORITHM: ClassVar[str] = "KHA-256"
 
     # Çıktı boyutu (bit testi için daha büyük örneklem) (Değişmez - güvenlik için kritik)
@@ -5200,6 +5201,19 @@ def ultra_fast_hash(data: Union[str, bytes]) -> int:
         data = data.encode("utf-8")
     return xxhash.xxh64_intdigest(data)
 
+def ultra_fast_hash_hex(data):
+    """xxHash64 - hex formatında"""
+    if isinstance(data, str):
+        data = data.encode("utf-8")
+    return xxhash.xxh64_hexdigest(data)  # 16 karakter hex
+
+# integer'ı hex'e çevir:
+def ultra_fast_hash_int_to_hex(data):
+    """xxHash64 - integer'ı hex'e çevir"""
+    hash_int = ultra_fast_hash(data)
+    return hex(hash_int)[2:]  # '0x' kaldırılır, 16 karakter
+    # veya: f"{hash_int:016x}"  # 16 karakter, başa sıfır ekler
+
 
 def fastest_cache_key(data: str) -> int:
     """String için optimize edilmiş cache key (xxHash64)."""
@@ -5375,6 +5389,133 @@ def quick_hash_128(data: Union[str, bytes]) -> str:
     if isinstance(data, str):
         data = data.encode("utf-8")
     return blake3(data).hexdigest(length=16)
+
+
+class Shake256Hasher:
+    """SHAKE256 hash sınıfı - ek özelliklerle
+    from Crypto.Hash import SHAKE256
+    """
+    
+    def __init__(self, output_length=32):
+        """
+        SHAKE256 hasher başlatıcı
+        
+        Args:
+            output_length: Varsayılan çıktı uzunluğu (bytes)
+        """
+        self.default_output_length = output_length
+        
+    def hash(self, data, output_length=None):
+        """
+        Veriyi hash'ler
+        
+        Args:
+            data: Hash'lenecek veri
+            output_length: Çıktı uzunluğu (None ise varsayılan kullanılır)
+            
+        Returns:
+            bytes: Hash değeri
+        """
+        if output_length is None:
+            output_length = self.default_output_length
+            
+        return shake256_hash(data, output_length)
+    
+    def hash_hex(self, data, output_length=None):
+        """Hash'i hex string olarak döndür"""
+        return self.hash(data, output_length).hex()
+    
+    def hash_int(self, data, output_length=None):
+        """Hash'i integer olarak döndür"""
+        return int.from_bytes(self.hash(data, output_length), byteorder='big')
+    
+    def file_hash(self, filepath, output_length=32):
+        """Dosyanın hash'ini hesaplar"""
+        with open(filepath, 'rb') as f:
+            return shake256_hash(f.read(), output_length)
+
+def shake256_hash(data, output_length=32):
+    """
+    SHAKE256 değişken çıktı uzunluklu hash fonksiyonu.
+    
+    Args:
+        data: Hash'lenecek veri (bytes veya string)
+        output_length: İstenen çıktı uzunluğu (bytes cinsinden)
+        
+    Returns:
+        bytes: Belirtilen uzunlukta hash değeri
+        
+    Raises:
+        ValueError: output_length negatif veya çok büyükse
+    """
+    # Çıktı uzunluğu kontrolü
+    if output_length <= 0:
+        raise ValueError("Çıktı uzunluğu pozitif olmalı")
+    if output_length > 2**32:  # Makul bir üst sınır
+        raise ValueError("Çıktı uzunluğu çok büyük")
+    
+    # Eğer data string ise bytes'a çevir
+    if isinstance(data, str):
+        data = data.encode('utf-8')
+    elif not isinstance(data, bytes):
+        # Diğer tipler için string'e çevir
+        data = str(data).encode('utf-8')
+    
+    # SHAKE256 hash objesi oluştur
+    shake = SHAKE256.new()
+    
+    # Veriyi güncelle
+    shake.update(data)
+    
+    # Belirtilen uzunlukta hash değerini al
+    return shake.read(output_length)
+
+# Kısa kullanım için yardımcı fonksiyonlar
+def shake256_128(data):
+    """128 bit (16 byte) SHAKE256 hash"""
+    return shake256_hash(data, 16)
+
+def shake256_256(data):
+    """256 bit (32 byte) SHAKE256 hash"""
+    return shake256_hash(data, 32)
+
+def shake256_512(data):
+    """512 bit (64 byte) SHAKE256 hash"""
+    return shake256_hash(data, 64)
+
+# Test fonksiyonu
+def test_shake256():
+    """SHAKE256 fonksiyonlarını test et"""
+    
+    test_cases = [
+        ("", "Boş string"),
+        ("a", "Tek karakter"),
+        ("abc", "Kısa string"),
+        ("Hello World!", "Noktalama ile"),
+        ("x" * 1000, "Uzun string"),
+    ]
+    
+    print("SHAKE256 Test Sonuçları:")
+    print("=" * 60)
+    
+    for data, description in test_cases:
+        print(f"\nTest: {description}")
+        print(f"Veri: '{data[:50]}{'...' if len(data) > 50 else ''}'")
+        
+        # Farklı uzunluklarda hash
+        for length in [16, 32, 64]:
+            hash_val = shake256_hash(data, length)
+            print(f"  {length} byte: {hash_val.hex()[:40]}...")
+    
+    # Performans testi
+    import time
+    large_data = "x" * 1000000  # 1MB veri
+    
+    start = time.time()
+    shake256_hash(large_data, 32)
+    elapsed = time.time() - start
+    
+    print(f"\nPerformans: 1MB veri için {elapsed:.3f} saniye")
 
 
 # ======================
