@@ -881,6 +881,8 @@ Remember: There is a balance between security and performance.
 
 Using the right tool in the right place is the key to building both secure and efficient systems.
 
+---
+
 Örnek kullanım/sample usage:
 
 [![memory-hard](https://github.com/WhiteSymmetry/kha256/blob/main/notebooks/memory-hard.ipynb)](https://github.com/WhiteSymmetry/kha256/blob/main/notebooks/memory-hard.ipynb)
