@@ -693,6 +693,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 ### APA
 
 ```
+
 Keçeci, M. (2025). KHA-256: A Next-Generation Cryptographic Hash Function Based on Keçeci Numbers and Mathematical Constants. Open Science Articles (OSAs), Zenodo. https://doi.org/10.5281/zenodo.18156885
 
 Keçeci, M. (2025). KHA-256. GitHub, PyPI, Anaconda, Zenodo. https://doi.org/10.5281/zenodo.18089401 & https://github.com/WhiteSymmetry/kha256 & https://pypi.org/project/kha256 & https://anaconda.org/bilgi/kha256
@@ -738,6 +739,8 @@ KHA-256 v0.1.1
 ```
 
 # Pixi:
+
+```
 
 [![Pixi](https://img.shields.io/badge/Pixi-Pixi-brightgreen.svg)](https://prefix.dev/channels/bilgi)
 
@@ -791,9 +794,13 @@ License: GNU AFFERO GENERAL PUBLIC LICENSE
 
 Copyright (c) 2025-2026 Mehmet Keçeci
 
----
+```
+
+
 
 # 🔐 Memory-Hard Hash Nedir? (What is Memory-Hard Hash?)
+
+```
 
 ## Hazırlayan: Mehmet Keçeci
 
@@ -881,7 +888,7 @@ Remember: There is a balance between security and performance.
 
 Using the right tool in the right place is the key to building both secure and efficient systems.
 
----
+```
 
 Örnek kullanım/sample usage:
 
