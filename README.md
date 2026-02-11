@@ -137,9 +137,14 @@ print(f"Hash: {hash_result}")
 ### Şifre Hashleme
 ```python
 from kha256 import hash_password
+import os
+
+#  minimum 16 byte salt gereksinim
+salt = secrets.token_bytes(64)  # 64 byte
+print(salt)
 
 password = "GizliŞifre123!"
-hashed_password = hash_password(password)
+hashed_password = hash_password(password, salt)
 print(f"Hashlenmiş Şifre: {hashed_password[:80]}...")
 ```
 
@@ -168,9 +173,9 @@ from kha256 import FortifiedKhaHash256, FortifiedConfig
 config = FortifiedConfig(
     iterations=20,           # Daha fazla iterasyon
     shuffle_layers=16,       # Daha fazla karıştırma katmanı
-    salt_length=128,         # Daha uzun tuz
+    salt_length=64,         # Daha uzun tuz
     double_hashing=True,     # Çift hashleme aktif
-    enable_quantum_resistance=True  # Kuantum direnç
+    #enable_quantum_resistance=True  # Kuantum direnç
 )
 
 # Hasher oluştur
@@ -253,7 +258,7 @@ fast_config = FortifiedConfig(
     iterations=8,
     shuffle_layers=6,
     components_per_hash=12,
-    enable_quantum_resistance=False,
+    #enable_quantum_resistance=False,
     double_hashing=False
 )
 
@@ -262,7 +267,7 @@ secure_config = FortifiedConfig(
     iterations=24,
     shuffle_layers=20,
     components_per_hash=32,
-    enable_quantum_resistance=True,
+    #enable_quantum_resistance=True,
     double_hashing=True,
     triple_compression=True
 )
@@ -277,12 +282,12 @@ Ana hash sınıfı.
 
 ```python
 class FortifiedKhaHash256:
-    def __init__(self, config: Optional[FortifiedConfig] = None)
-    def hash(self, data: Union[str, bytes], salt: Optional[bytes] = None) -> str
-    def test_avalanche_effect(self, samples: int = 100) -> Dict[str, Any]
-    def test_collision_resistance(self, samples: int = 5000) -> Dict[str, Any]
-    def test_uniformity(self, samples: int = 5000) -> Dict[str, Any]
-    def get_stats(self) -> Dict[str, Any]
+    def __init__(self, config: Optional[FortifiedConfig] = None):
+    def hash(self, data: Union[str, bytes], salt: Optional[bytes] = None) -> str:
+    def test_avalanche_effect(self, samples: int = 100) -> Dict[str, Any]:
+    def test_collision_resistance(self, samples: int = 5000) -> Dict[str, Any]:
+    def test_uniformity(self, samples: int = 5000) -> Dict[str, Any]:
+    def get_stats(self) -> Dict[str, Any]:
 ```
 
 #### `FortifiedConfig`
@@ -292,6 +297,7 @@ class FortifiedKhaHash256:
 Konfigürasyon sınıfı.
 
 ```python
+# Buradaki değerler sabit olmayıp her sürümde değişmektedir
 @dataclass
 class FortifiedConfig:
     output_bits: int = 256
@@ -640,6 +646,8 @@ run_comprehensive_test() -> FortifiedKhaHash256
 
 # Benchmark
 benchmark_hash(data_sizes: List[int] = [64, 256, 1024, 4096]) -> Dict[str, Any]
+
+[![memory-hard](https://github.com/WhiteSymmetry/kha256/blob/main/notebooks/kha256_demo.ipynb)](https://github.com/WhiteSymmetry/kha256/blob/main/notebooks/kha256_demo.ipynb)
 ```
 
 ### Development Environment Setup
@@ -748,9 +756,9 @@ pixi init kha256
 
 cd kha256
 
-pixi workspace channel add https://repo.prefix.dev/bilgi --prepend
+pixi workspace channel add https://prefix.dev/channels/bilgi --prepend
 
-✔ Added https://repo.prefix.dev/bilgi
+✔ Added https://prefix.dev/channels/bilgi
 
 pixi add kha256
 
@@ -766,7 +774,7 @@ pixi run python -c "import kha256; print(kha256.__version__)"
 
 pixi remove kha256
 
-conda install -c https://prefix.dev/bilgi kha256
+conda install -c https://prefix.dev/channels/bilgi kha256
 
 pixi run python -c "import kha256; print(kha256.__version__)"
 
