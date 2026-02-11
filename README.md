@@ -143,7 +143,7 @@ import os
 salt = secrets.token_bytes(64)  # 64 byte
 print(salt)
 
-password = "GizliŞifre123!"
+password = b"GizliSifre123!" # sadece byte
 hashed_password = hash_password(password, salt)
 print(f"Hashlenmiş Şifre: {hashed_password[:80]}...")
 ```
