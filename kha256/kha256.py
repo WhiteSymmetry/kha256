@@ -68,7 +68,7 @@ __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0 license"
 __status__ = "Pre-Production"
 
-req_kececinumbers = "0.9.4"
+req_kececinumbers = "0.9.5"
 
 # KeçeciNumbers check - made API compatible
 KHA_AVAILABLE = True
@@ -99,6 +99,7 @@ TYPE_ROUTON = 19
 TYPE_VOUDON = 20
 TYPE_SUPERREAL = 21
 TYPE_TERNARY = 22
+TYPE_HYPERCOMPLEX = 23
 
 # Try to import kececinumbers
 try:
@@ -128,6 +129,7 @@ try:
         TYPE_SUPERREAL = kn.TYPE_SUPERREAL
         TYPE_TERNARY = kn.TYPE_TERNARY
         TYPE_NEUTROSOPHIC_BICOMPLEX = kn.TYPE_NEUTROSOPHIC_BICOMPLEX
+        TYPE_HYPERCOMPLEX = kn.TYPE_HYPERCOMPLEX
 
     # Known working types
     WORKING_TYPES = [
@@ -153,6 +155,7 @@ try:
         TYPE_VOUDON,
         TYPE_SUPERREAL,
         TYPE_TERNARY,
+        TYPE_HYPERCOMPLEX,
     ]
 
     # Type names
@@ -179,6 +182,15 @@ try:
         TYPE_VOUDON: "Voudon",
         TYPE_SUPERREAL: "Superreal",
         TYPE_TERNARY: "Ternary",
+        TYPE_HYPERCOMPLEX: 'Hypercomplex',
+    }
+
+    TYPE_NAMES1 = {
+        1: 'POSITIVE_REAL', 2: 'NEGATIVE_REAL', 3: 'COMPLEX', 4: 'FLOAT', 5: 'RATIONAL',
+        6: 'QUATERNION', 7: 'NEUTROSOPHIC', 8: 'NEUTROSOPHIC_COMPLEX', 9: 'HYPERREAL',
+        10: 'BICOMPLEX', 11: 'NEUTROSOPHIC_BICOMPLEX', 12: 'OCTONION', 13: 'SEDENION',
+        14: 'CLIFFORD', 15: 'DUAL', 16: 'SPLIT_COMPLEX', 17: 'PATHION', 18: 'CHINGON',
+        19: 'ROUTON', 20: 'VOUDON', 21: 'SUPERREAL', 22: 'TERNARY', 23: 'HYPERCOMPLEX'
     }
 
     # Check version
@@ -593,7 +605,8 @@ class TrueMemoryHardHasher:
         Süre: ~50ms (8 MB) - ~100ms (16 MB) arası (modern CPU'larda)
         """
         password_bytes = password.encode('utf-8') if isinstance(password, str) else password
-        salt = salt or secrets.token_bytes(32)
+        #salt = salt or secrets.token_bytes(32)
+        salt = salt or secrets.token_bytes(64)
         
         start = time.perf_counter()
         
@@ -623,7 +636,8 @@ def diagnose_memory_hardness():
     print("\n🧪 TEST 1: Temel Balloon Hasher Çalışıyor mu?")
     try:
         hasher = TrueMemoryHardHasher(memory_cost_kb=1024, time_cost=1)  # 1 MB, 1 tur (hızlı test)
-        salt = secrets.token_bytes(32)
+        #salt = secrets.token_bytes(32)
+        salt = secrets.token_bytes(64)
         result = hasher.hash("test", salt)
         print(f"  ✅ Başarılı: {result[:16]}...")
     except Exception as e:
@@ -643,7 +657,8 @@ def diagnose_memory_hardness():
     times = []
     for name, mem_kb in configs:
         hasher = TrueMemoryHardHasher(memory_cost_kb=mem_kb, time_cost=2)
-        salt = secrets.token_bytes(32)
+        #salt = secrets.token_bytes(32)
+        salt = secrets.token_bytes(64)
         
         # Isınma
         for _ in range(2):
@@ -2503,7 +2518,8 @@ class FortifiedKhaCore:
         
         # Salt yoksa veya boşsa default salt kullan
         if not salt or len(salt) == 0:
-            salt = b"\xab\xcd\xef\x01\x23\x45\x67\x89"
+            #salt = b"\xab\xcd\xef\x01\x23\x45\x67\x89"
+            salt = secrets.token_bytes(64)
         
         # 🔒 Katman 1: LCG karıştırma (taşma korumalı)
         for i in range(n):
@@ -2545,11 +2561,12 @@ class FortifiedKhaCore:
             Karıştırılmış matris (orijinal şekil korunur)
 
         # Salt yoksa veya boşsa default salt oluştur
-        FIXED VERSION - salt length check removed
+        salt length check removed
         """
         # Salt yoksa veya boşsa default salt oluştur
         if not salt or len(salt) == 0:
-            salt = b"\xab\xcd\xef\x01\x23\x45\x67\x89"
+            #salt = b"\xab\xcd\xef\x01\x23\x45\x67\x89"
+            salt = secrets.token_bytes(64)
         
         # Salt'ı en az 1 byte yap (32 byte şartı KALDIRILDI)
         if len(salt) < 1:
@@ -4333,7 +4350,7 @@ class HybridKhaHash256(FortifiedKhaHash256):
                 enable_byte_distribution_optimization=False,
                 byte_uniformity_rounds=1,
                 hash_bytes=32,
-                salt_length=8,
+                salt_length=16,
                 rounds=6,
                 memory_cost=512,
                 parallelism=1,
@@ -4367,7 +4384,7 @@ class HybridKhaHash256(FortifiedKhaHash256):
                 "enable_byte_distribution_optimization": False,
                 "byte_uniformity_rounds": 1,
                 "hash_bytes": 32,
-                "salt_length": 8,
+                "salt_length": 16,
                 "rounds": 6,
                 "memory_cost": 512,
                 "parallelism": 1,
@@ -4661,7 +4678,7 @@ class OptimizedKhaHash256(FortifiedKhaHash256):
                 enable_byte_distribution_optimization=False,
                 byte_uniformity_rounds=1,
                 hash_bytes=32,
-                salt_length=4 if turbo_mode else 8,
+                salt_length=16 if turbo_mode else 32,
                 rounds=3 if turbo_mode else 6,
                 memory_cost=256 if turbo_mode else 512,
                 parallelism=1,
@@ -4696,7 +4713,7 @@ class OptimizedKhaHash256(FortifiedKhaHash256):
                 "enable_byte_distribution_optimization": False,
                 "byte_uniformity_rounds": 1,
                 "hash_bytes": 32,
-                "salt_length": 4 if turbo_mode else 8,
+                "salt_length": 16 if turbo_mode else 32,
                 "rounds": 3 if turbo_mode else 6,
                 "memory_cost": 256 if turbo_mode else 512,
                 "parallelism": 1,
@@ -5012,7 +5029,7 @@ def hash_password(data: bytes, salt: bytes, *,
         maxmem = 512 * 1024 * 1024 # 512MB
         
     digest = hashlib.scrypt(
-        password=data,
+        password=data.encode('utf-8'),
         salt=salt,
         n=n, r=r, p=p,
         dklen=32,
@@ -5362,13 +5379,14 @@ def secure_hash_password(password: str) -> str:
             time_cost=3,      # Iterasyon sayısı (t)
             memory_cost=16256, # Bellek maliyeti (m KB): 65536: 64 MB
             parallelism=12,    # Paralellik (p): threadripper desteği
-            hash_len=32,      # Çıktı uzunluğu (byte)
+            hash_len=64,      # Çıktı uzunluğu (byte)
         )
         return ph.hash(password)
     except ImportError:
         # Fallback: PBKDF2
-        salt = os.urandom(16)
-        dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 600_000, dklen=32)
+        #salt = os.urandom(16)
+        salt = secrets.token_bytes(64)
+        dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 600_000, dklen=64)
         return salt.hex() + ":" + dk.hex()
 
 # xxh64_hash (hex string output)
@@ -5609,7 +5627,7 @@ def test_fortified_hashers() -> Dict[str, Dict[str, Any]]:
         "config": "password(defaults)"
     }
     
-    # 3. Fixed fonksiyonlar
+    # 3. _pca_var_sum fonksiyonlar
     fixed_functions = [
         ("secure", generate_fortified_hasher_secure),
         ("fast", generate_fortified_hasher_password),
@@ -5716,7 +5734,8 @@ MockCore._enhanced_byte_diffusion = FortifiedKhaCore._enhanced_byte_diffusion
 # Test kodu
 core = MockCore()
 test_matrix = np.random.random(64).astype(np.float64)
-test_salt = b"secure_salt_2026_abcdef1234567890"
+#test_salt = b"secure_salt_2026_abcdef1234567890"
+test_salt = secrets.token_bytes(64)
 
 try:
     result = core._quantum_avalanche_mix(test_matrix, test_salt)
@@ -5746,7 +5765,8 @@ MockCore._secure_diffusion_mix = FortifiedKhaCore._secure_diffusion_mix
 
 core = MockCore()
 test_matrix = np.random.random(64).astype(np.float64)
-test_salt = b"secure_salt_2026_abcdef1234567890"
+#test_salt = b"secure_salt_2026_abcdef1234567890"
+test_salt = secrets.token_bytes(64)
 
 try:
     result = core._secure_diffusion_mix(test_matrix, test_salt)
@@ -6235,7 +6255,7 @@ class HardwareSecurityID:
         # ✅ Tek hasher instance'ı — cache kalıcı olur
         self.hasher = FortifiedKhaHash256(
             deterministic = True,
-            config=type('Config', (), {'cache_enabled': True, 'salt_length': 32})()
+            config=type('Config', (), {'cache_enabled': True, 'salt_length': 64})()
         )
     
     def _collect_data(self) -> Dict[str, str]:
@@ -6325,7 +6345,8 @@ class SecureKhaHash256:
 # Basit Hasher wrapper sınıfı
 class SimpleKhaHasher:
     def __init__(self, salt: bytes = None):
-        self.salt = salt or b"KHA_DEFAULT_SALT_32BYTES!!"
+        #self.salt = salt or b"KHA_DEFAULT_SALT_32BYTES!!"
+        self.salt = salt or secrets.token_bytes(64)
     
     def hash(self, data: str, salt: bytes = None) -> str:
         """String input → KHA hash"""
@@ -7015,7 +7036,8 @@ class MemoryHardDemo:
             return
         
         # Tuz oluştur
-        salt = secrets.token_bytes(32)
+        #salt = secrets.token_bytes(32)
+        salt = secrets.token_bytes(64)
         print(f"✅ Oluşturulan tuz: {salt[:8].hex()}...")
         
         # Memory-hard hash oluştur
@@ -7095,7 +7117,8 @@ class MemoryHardDemo:
         print("="*60)
         
         test_data = b"TestPassword123"
-        test_salt = secrets.token_bytes(32)
+        #test_salt = secrets.token_bytes(32)
+        test_salt = secrets.token_bytes(64)
         
         print("Test verisi: 'TestPassword123'")
         print(f"Test tuzu: {test_salt[:8].hex()}...")
@@ -7203,7 +7226,8 @@ class MemoryHardDemo:
         print("="*60)
         
         test_data = b"MyPassword123"
-        test_salt = secrets.token_bytes(32)
+        #test_salt = secrets.token_bytes(32)
+        test_salt = secrets.token_bytes(64)
         
         security_levels = [
             ("DÜŞÜK", 1024, "1MB", "Session token'lar"),
@@ -7427,7 +7451,8 @@ class db:
                         return False
                 
                 # Tuz oluştur
-                salt = secrets.token_bytes(32)
+                #salt = secrets.token_bytes(32)
+                salt = secrets.token_bytes(64)
                 
                 # Memory-hard hash oluştur
                 print(f"⏳ '{username}' için memory-hard hash hesaplanıyor...")
@@ -7701,7 +7726,8 @@ def performance_comparison():
     """Memory-hard vs normal hash performans karşılaştırması"""
     
     password = "TestPassword123"
-    salt = secrets.token_bytes(32)
+    #salt = secrets.token_bytes(32)
+    salt = secrets.token_bytes(64)
     
     # 1. Memory-hard hasher (gerçek koruma)
     memory_hard = TrueMemoryHardHasher(memory_cost_kb=8192, time_cost=3)
@@ -7766,7 +7792,8 @@ def secure_password_hashing(password, salt=None):
     import secrets
     
     if salt is None:
-        salt = secrets.token_bytes(32)  # 256-bit salt
+        #salt = secrets.token_bytes(32)  # 256-bit salt
+        salt = secrets.token_bytes(64)
     
     # NIST SP 800-63B uyumlu ayarlar
     hasher = TrueMemoryHardHasher(
@@ -7894,7 +7921,8 @@ if __name__ == "__main__":
     print("   Salt zorunlu • USB varsayılan • 2026 güvenli\n")
 
     # Sabit test salt'ı
-    fixed_salt = b"KHA_DEMO_SALT_32BYTES!!"
+    #fixed_salt = b"KHA_DEMO_SALT_32BYTES!!"
+    fixed_salt = secrets.token_bytes(64)
 
     if len(sys.argv) > 1 and sys.argv[1] == "--test":
         hasher = run_comprehensive_test()
