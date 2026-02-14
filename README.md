@@ -903,7 +903,7 @@ Using the right tool in the right place is the key to building both secure and e
 
 ```
 
----
+```
 
 # 📊 KHA-256 MEMORY-HARD KARŞILAŞTIRMA TABLOSU
 
@@ -1027,4 +1027,4 @@ FortifiedKhaHash256   72ms      151ms       307ms    2.03x  🔧 WRAPPER
 
 > *"Gerçek memory-hard, saf Python, tamamen orijinal."*
 
----
+```
