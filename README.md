@@ -80,9 +80,10 @@
 - **256-bit hash çıktısı** - Endüstri standardı
 - **Güçlü Avalanche Etkisi** - %49.5-50.5 ideal aralık
 - **Kuantum Dirençli Tasarım** - Post-kuantum güvenlik
-- **Çoklu Keçeci Sayısı Türleri** - 22 farklı matematiksel sistem
+- **Çoklu Keçeci Sayısı Türleri** - 23 farklı matematiksel sistem
 - **Entropi İnjeksiyonu** - Zaman ve sistem bazlı entropy
 - **Çift Hashleme** - Ek güvenlik katmanı
+- **Memory-Hard** - TrueMemoryHardHasher, MemoryHardHash, MemoryHardEngine, FortifiedKhaHash256
 
 ### ⚡ Performans Optimizasyonları
 - **Vektörel İşlemler** - NumPy ile optimize edilmiş
@@ -313,7 +314,7 @@ class FortifiedConfig:
     enable_post_quantum_mixing: bool = True
     double_hashing: bool = True
     triple_compression: bool = True
-    memory_hardening: bool = False # only memory-hard: "class TrueMemoryHardHasher"
+    memory_hardening: bool = False # memory-hard: TrueMemoryHardHasher, MemoryHardHash, MemoryHardEngine, FortifiedKhaHash256
     entropy_injection: bool = True
     time_varying_salt: bool = True
     context_sensitive_mixing: bool = True
