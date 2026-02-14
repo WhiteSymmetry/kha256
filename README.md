@@ -902,3 +902,129 @@ Using the right tool in the right place is the key to building both secure and e
 [![memory-hard](https://github.com/WhiteSymmetry/kha256/blob/main/notebooks/memory-hard.ipynb)](https://github.com/WhiteSymmetry/kha256/blob/main/notebooks/memory-hard.ipynb)
 
 ```
+
+---
+
+# 📊 KHA-256 MEMORY-HARD KARŞILAŞTIRMA TABLOSU
+
+| Özellik | **MemoryHardHash** | **TrueMemoryHardHasher** | **MemoryHardEngine** | **FortifiedKhaHash256** |
+|----------|---------------------|--------------------------|----------------------|--------------------------|
+| **🧠 Tür** | Pure Python Balloon | Optimized Balloon | Engine Wrapper | Fortified Wrapper |
+| **⚡ Hız (1MB)** | ~2.500 ms | ~70 ms | ~6.000 ms | ~70 ms |
+| **📈 Scaling** | **2.00x** (PERFECT) | 2.05x | 1.99x | 2.03x |
+| **🐍 Python** | ✅ Pure Python | ⚠️ Mixed | ✅ Pure Python | ⚠️ Mixed |
+| **🔧 Bağımlılık** | Yok | C uzantıları | Yok | C uzantıları |
+| **🎯 Orijinallik** | **%100 ORİJİNAL** | Balloon tabanlı | BLAKE2b tabanlı | Balloon wrapper |
+| **📦 Kullanım** | `MemoryHardHash(mb).hash(data, salt)` | `TrueMemoryHardHasher(memory_cost_kb=1024)` | `MemoryHardEngine(memory_mb=1).hash(data, salt)` | `FortifiedKhaHash256(config)` |
+| **🔄 Deterministik** | ✅ Evet | ✅ Evet | ✅ Evet | ✅ Evet |
+| **💾 Cache** | ❌ Yok | ❌ Yok | ❌ Yok | ⚠️ Varsayılan AÇIK |
+| **🔬 Avalanche** | %49.6 | %49.6 | %49.6 | %49.6 |
+| **🎨 Tasarım** | Matematiksel irrasyoneller | Balloon hash | BLAKE2b varyantı | Balloon wrapper |
+| **📚 Kod Satırı** | ~350 | ~200 | ~150 | ~100 |
+| **⚙️ Memory-hard Tipi** | Balloon (tam) | Balloon (optimize) | Blake2b-based | Balloon (wrapper) |
+
+---
+
+## 📝 **DETAYLI AÇIKLAMA**
+
+### 🥇 **MemoryHardHash** (PURE PYTHON - %100 ORİJİNAL)
+```python
+from kha256 import MemoryHardHash
+
+hasher = MemoryHardHash(memory_mb=1)
+hash_value = hasher.hash(b"password", salt)
+```
+- **✅ Tamamen pure Python** (C uzantısı yok)
+- **✅ %100 orijinal matematiksel tasarım**
+- **✅ Perfect scaling: 2.00x** (1MB→2MB→4MB)
+- **✅ Hiçbir standart hash'ten kod alınmamıştır**
+- **✅ Tüm sabitler matematiksel irrasyonellerden üretilmiştir**
+- **✅ Her ortamda çalışır** (Jupyter, Web, Embedded)
+
+### 🥈 **TrueMemoryHardHasher** (OPTIMIZE)
+```python
+from kha256 import TrueMemoryHardHasher
+
+hasher = TrueMemoryHardHasher(memory_cost_kb=1024, time_cost=3)
+hash_value = hasher.hash(b"password", salt)
+```
+- ⚠️ C uzantıları ile optimize edilmiş
+- 🏎️ En hızlı memory-hard (70ms)
+- 🔧 Balloon hash implementasyonu
+
+### 🥉 **MemoryHardEngine** (ENGINE)
+```python
+from kha256 import MemoryHardEngine
+
+engine = MemoryHardEngine(memory_mb=1)
+hash_value = engine.hash(b"password", salt)
+```
+- ✅ Pure Python
+- 🔧 BLAKE2b tabanlı varyant
+- 🐢 En yavaş (~6000ms) - güvenli!
+
+### 🏅 **FortifiedKhaHash256** (WRAPPER)
+```python
+from kha256 import FortifiedKhaHash256, FortifiedConfig
+
+config = FortifiedConfig(enable_memory_hard_mode=True, memory_cost_kb=1024)
+hasher = FortifiedKhaHash256(config)
+hash_value = hasher.hash(b"password", salt)
+```
+- ⚠️ TrueMemoryHardHasher wrapper
+- ⚠️ Cache varsayılan AÇIK! (kapatmak için `cache_enabled=False`)
+- 🔧 Çok yönlü konfigürasyon
+
+---
+
+## 🎯 **HANGİSİNİ SEÇMELİ?**
+
+| İhtiyaç | Önerilen | Neden |
+|---------|----------|-------|
+| **🔬 Araştırma/Geliştirme** | `MemoryHardHash` | Pure Python, her yerde çalışır |
+| **⚡ Performans** | `TrueMemoryHardHasher` | En hızlı (~70ms) |
+| **🔐 Maksimum Güvenlik** | `MemoryHardEngine` | En yavaş, brute-force dayanıklı |
+| **🛡️ Fortified Sistem** | `FortifiedKhaHash256` | Esnek konfigürasyon |
+
+---
+
+## 📈 **PERFORMANS KARŞILAŞTIRMASI**
+
+```
+Sınıf               1MB        2MB        4MB        Scaling
+------------------  ---------- ---------- ----------  --------
+MemoryHardHash      2.561ms    5.131ms    10.247ms    2.00x  🥇 PERFECT!
+TrueMemoryHardHasher   70ms      146ms       302ms    2.05x  🏎️ FAST
+MemoryHardEngine    6.005ms   11.949ms   23.898ms*   1.99x  🐢 SLOW
+FortifiedKhaHash256   72ms      151ms       307ms    2.03x  🔧 WRAPPER
+*extrapolated
+```
+
+---
+
+## 🔬 **BENZERLİKLER**
+
+✅ Hepsi memory-hard (Balloon veya türevi)  
+✅ Hepsi deterministic (aynı salt → aynı hash)  
+✅ Hepsi avalanche etkisi gösterir (~%50)  
+✅ Hepsi 256-bit (64 karakter hex) output  
+✅ Hepsi salt zorunluluğu var  
+
+## 🔬 **FARKLAR**
+
+| Alan | MemoryHardHash | Diğerleri |
+|------|----------------|-----------|
+| **Dil** | Pure Python | C optimizasyonlu |
+| **Hız** | Orta (2500ms) | Hızlı (70ms) veya Yavaş (6000ms) |
+| **Orijinallik** | **%100 ORİJİNAL** | Standartlardan uyarlama |
+| **Taşınabilirlik** | Mükemmel | Platform bağımlı |
+
+---
+
+## 🏆 **ÖZET**
+
+**MemoryHardHash** KHA-256 ailesinin **en orijinal**, **en saf** ve **en taşınabilir** üyesidir. Hiçbir standart hash fonksiyonundan kod almamış, tamamen matematiksel irrasyonellerden üretilmiş sabitlerle çalışan **%100 özgün** bir memory-hard hash implementasyonudur.
+
+> *"Gerçek memory-hard, saf Python, tamamen orijinal."*
+
+---
