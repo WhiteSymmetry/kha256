@@ -21,11 +21,12 @@ import warnings
     # importlib.reload(kha256) # F821 undefined name 'kha256'
 
 # Paket sürüm numarası
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0-or-later"
 __copyright__ = "Copyright 2025-2026 Mehmet Keçeci"
 __email__ = "mkececi@yaani.com"
+__certificate__ = "KHA256-PA-2025-001"
 
 # Public API exposed to users of the 'kha256' package.
 # Dışa aktarılacak içerikleri belirle
@@ -73,10 +74,6 @@ __all__ = [
     "performance_comparison",
     "economic_analysis",
     "secure_password_hashing",
-
-    "__version__",
-    "__author__",
-    "__license__"
 ]
 
 # ============================================================
@@ -102,6 +99,7 @@ from .kha256 import (
     SecurityLayers,
     TrueMemoryHardConfig,
     TrueMemoryHardHasher,
+    Colors,
     _balloon_expand,
     _balloon_mix,
     _memory_hard_fill,
@@ -178,7 +176,76 @@ from .kha256 import (
     performance_comparison,
     economic_analysis,
     secure_password_hashing,
-        
+    print_header,
+    print_subheader,
+    print_success,
+    print_error,
+    print_warning,
+    print_info,
+    safe_hash_password,
+    safe_quick_hash,
+    calculate_bit_difference,
+    cal_bit_difference,
+    test_basic_functionality,
+    test_performance_scenarios,
+    test_security_scenarios,
+    test_real_world_scenarios,
+    test_edge_cases,
+    run_comprehensive_test_suite,
+    fixed_gfh_password,
+    test_memory_hard_real,
+    test_true_memory_hard_direct,
+    test_fortified_memory_hard,
+    test_fortified_memory_hard_fixed,
+    test_fortified_memory_hard2,
+    test_true_memory_hard,
+    test_memory_hard_engine,
+    test_memory_hard_hash,
+    Kha256SecureStorage,
+    avalanche_test,
+    detailed_avalanche_test,
+    plot_avalanche_distribution,
+    comprehensive_avalanche_test,
+    safe_heatmap_plot,
+    KHA256UnicodeHasher,
+    gizli_turkce_hash,
+    test_avalanche,
+    test_streaming,
+    test_hmac,
+    StreamingKHA256,
+    KHA256,
+    CoreHash,
+    MemoryHardHash,
+    DeterministicHash,
+    KHAUtils,
+    TransformFunctions,
+    KHA256Utils,
+    DeterministicEngine,
+    MemoryHardEngine,
+    CoreEngine,
+    KHA256b,
+    cig_test,
+    test2_hmac,
+    test2_avalanche,
+    test2_streaming,
+    test_kha256b,
+    test_kha256_main,
+    test_deterministic_hash,
+    test_core_hash,
+    test_khautils,
+    simple_hmac,
+    secure_compare,
+    int_to_bytes,
+    bytes_to_int,
+    xor_bytes,
+    Colors,
+    print_header,
+    print_subheader,
+    print_success,
+    print_error,
+    print_warning,
+    print_info,
+
     # Sabitler ve durum değişkenleri
     KHA_AVAILABLE,
     WORKING_TYPES,
@@ -188,6 +255,7 @@ from .kha256 import (
     __version__,
     __author__,
     __license__,
+    __certificate__,
 )
 
 # Eski bir fonksiyonun yer tutucusu - gelecekte kaldırılacak
