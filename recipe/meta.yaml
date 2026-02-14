@@ -1,4 +1,4 @@
-{% set version = "0.2.0" %}
+{% set version = "0.2.1" %}
 
 package:
   name: kha256
@@ -42,7 +42,7 @@ test:
     - numpy
   imports:
     - kha256
-    - kececinumbers >=0.9.1
+    - kececinumbers >=0.9.5
     - numpy
 
 about:
