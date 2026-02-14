@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kha256"
-version = "0.2.0"
+version = "0.2.1"
 
 # Diğer proje bilgileri (isteğe bağlı ama tavsiye edilir)
 authors = [
@@ -36,6 +36,7 @@ dependencies = [
     "cryptography",
     "ipywidgets",
     "ipython",
+    "scipy",
 ]
 
 [project.optional-dependencies]
