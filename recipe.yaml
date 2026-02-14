@@ -4,13 +4,13 @@ schema_version: 1
 # this sets up "context variables" (in this case name and version) that
 # can later be used in Jinja expressions
 context:
-  version: 0.2.1
+  version: 0.2.2
   name: kha256
 
 # top level package information (name and version)
 package:
   name: kha256
-  version: 0.2.1
+  version: 0.2.2
 
 # location to get the source from
 #`source` are `url`, `sha256`, `md5`, `patches`, `file_name` and `target_directory`
