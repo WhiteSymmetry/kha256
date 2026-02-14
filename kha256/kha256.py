@@ -221,7 +221,7 @@ if is_jupyter():
 
 
 # Version information
-__version__ = "0.2.1"  # Updated
+__version__ = "0.2.2"  # Updated
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0 license"
 __status__ = "Pre-Production"
@@ -5081,39 +5081,40 @@ class PerformanceOptimizedKhaCore(FortifiedKhaCore):
 
 def test_memory_hard_real():
     """Memory-hard'in GERÇEKTEN çalıştığını test et - DÜZELTİLDİ"""
-    
+
     print_header("🧪 MEMORY-HARD GERÇEK TEST")
-    
-    from kha256 import FortifiedKhaHash256, FortifiedConfig
+
     import secrets
     import time
-    
+
+    from kha256 import FortifiedConfig, FortifiedKhaHash256
+
     # Memory-hard mod - 32KB
     config = FortifiedConfig(
         enable_memory_hard_mode=True,
         memory_cost_kb=1024,  # 1MB (aslında 32KB değil, 1024KB!)
         time_cost=3,
-        cache_enabled=False  # <-- BURASI ÖNEMLİ!
+        cache_enabled=False,  # <-- BURASI ÖNEMLİ!
     )
-    
+
     hasher = FortifiedKhaHash256(config, deterministic=False)
     salt = secrets.token_bytes(32)
-    
+
     # İlk hash - yavaş olmalı
     start = time.perf_counter()
     h1 = hasher.hash(b"test123", salt)
     t1 = (time.perf_counter() - start) * 1000
-    
+
     # İkinci hash - cache'lenmemeli, yine yavaş olmalı!
     start = time.perf_counter()
     h2 = hasher.hash(b"test123", salt)
     t2 = (time.perf_counter() - start) * 1000
-    
+
     # Üçüncü hash - farklı salt, yine yavaş!
     start = time.perf_counter()
     h3 = hasher.hash(b"test123", secrets.token_bytes(32))
     t3 = (time.perf_counter() - start) * 1000
-    
+
     print("\n📊 MEMORY-HARD TEST SONUÇLARI:")
     print(f"  h1: {h1[:16]}... ({len(h1) * 8} bit)")
     print(f"  h2: {h2[:16]}... ({len(h2) * 8} bit)")
@@ -5121,34 +5122,34 @@ def test_memory_hard_real():
     print(f"  Hash1 süresi: {t1:.2f}ms")
     print(f"  Hash2 süresi: {t2:.2f}ms")
     print(f"  Hash3 süresi: {t3:.2f}ms")
-    
+
     # KONTROLLER
     print("\n🔍 KONTROLLER:")
-    
+
     # 1. Cache kapalı mı?
     if t1 > 50 and t2 > 50 and t3 > 50:
         print_success("✅ CACHE KAPALI! (tüm süreler >50ms)")
     else:
         print_error("❌ CACHE HALA AÇIK! (süreler <50ms)")
-    
+
     # 2. Deterministik mi? (aynı salt → aynı hash)
     if h1 == h2:
         print_success("✅ Deterministik: Aynı salt → aynı hash")
     else:
         print_error("❌ Deterministik DEĞİL!")
-    
+
     # 3. Farklı salt → farklı hash
     if h1 != h3:
         print_success("✅ Farklı salt → farklı hash")
     else:
         print_error("❌ Salt etkisiz!")
-    
+
     # 4. Scaling (opsiyonel)
     if t2 > t1 * 0.8 and t2 < t1 * 1.2:
         print_success("✅ Süreler tutarlı (no cache)")
     else:
         print_warning("⚠️ Süreler arasında büyük fark var")
-    
+
     return t1 > 50 and t2 > 50 and t3 > 50
 
 
@@ -13676,6 +13677,103 @@ def test_fortified_memory_hard2():
         return False
 
 
+def run_all_tests():
+    """Bütün memory-hard sınıfı testlerini çalıştırır"""
+
+    if is_jupyter():
+        clear_output(wait=True)
+
+    print_header("🧪 KHA-256 bütün Sınıflar Testi", 70)
+    print(f"Tarih: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Jupyter: {'✅' if is_jupyter() else '❌'}")
+    print(f"{'=' * 70}")
+
+    summary = {}
+
+    # TEST 1: KHAUtils
+    print_header("🔧 TEST 1: KHAUtils", 70)
+    summary["KHAUtils"] = test_khautils()
+
+    # TEST 2: CoreHash
+    print_header("⚙️ TEST 2: CoreHash", 70)
+    summary["CoreHash"] = test_core_hash()
+
+    # TEST 3: DeterministicHash
+    print_header("🎯 TEST 3: DeterministicHash", 70)
+    summary["DeterministicHash"] = test_deterministic_hash()
+
+    # TEST 4: MemoryHardHash
+    print_header("🧠 TEST 4: MemoryHardHash", 70)
+    summary["MemoryHardHash"] = test_memory_hard_hash()
+
+    # TEST 5: MemoryHardEngine (YENİ!)
+    print_header("⚙️🧠 TEST 5: MemoryHardEngine", 70)
+    summary["MemoryHardEngine"] = test_memory_hard_engine()
+
+    # TEST 6: KHA256
+    print_header("📦 TEST 6: KHA256", 70)
+    summary["KHA256"] = test_kha256_main()
+
+    # TEST 7: KHA256b
+    print_header("✨ TEST 7: KHA256b", 70)
+    summary["KHA256b"] = test_kha256b()
+
+    # TEST 8: StreamingKHA256
+    print_header("🌊 TEST 8: StreamingKHA256", 70)
+    summary["Streaming"] = test2_streaming()
+
+    # TEST 9: Avalanche
+    print_header("🔄 TEST 9: Avalanche", 70)
+    summary["Avalanche"] = test2_avalanche()
+
+    # TEST 10: HMAC
+    print_header("🔐 TEST 10: HMAC", 70)
+    summary["HMAC"] = test2_hmac()
+
+    # TEST 11: TrueMemoryHardHasher
+    print_header("🏔️ TEST 11: TrueMemoryHardHasher", 70)
+    summary["TrueMemoryHardHasher"] = test_true_memory_hard()
+
+    # TEST 12: FortifiedKhaHash256
+    print_header("🛡️ TEST 12: FortifiedKhaHash256", 70)
+    summary["FortifiedKhaHash256"] = test_fortified_memory_hard2()
+
+    # ========== ÖZET RAPOR ==========
+    print_header("📊 KHA-256 Test Raporu", 70)
+
+    print(f"\n{'=' * 70}")
+    print(f"{'TEST':<40} {'DURUM':<20}")
+    print(f"{'=' * 70}")
+
+    for test_name, passed in summary.items():
+        status = "✅ PASS" if passed else "❌ FAIL"
+        color = Colors.GREEN if passed else Colors.RED
+        name_display = f"{test_name:<38}"
+        print(f"  {name_display} {color}{status}{Colors.RESET}")
+
+    print(f"{'=' * 70}")
+
+    total_tests = len(summary)
+    passed_tests = sum(1 for v in summary.values() if v)
+
+    print(f"\n🎯 Genel Sonuç: {passed_tests}/{total_tests} testi Geçti")
+
+    if passed_tests == total_tests:
+        print(
+            f"\n{Colors.GREEN}{Colors.BOLD}✅ Mükemmel! Bütün KHA-256 Sınıfları Çalışıyor!{Colors.RESET}"
+        )
+    elif passed_tests >= total_tests - 2:
+        print(
+            f"\n{Colors.YELLOW}{Colors.BOLD}⚠️ Çoğu test geçti, küçük sorunlar var{Colors.RESET}"
+        )
+    else:
+        print(f"\n{Colors.RED}{Colors.BOLD}❌ Önemli sorunlar var{Colors.RESET}")
+
+    print(f"{'=' * 70}")
+
+    return summary
+
+
 # ============================================================
 # ÖRNEK KULLANIM
 # ============================================================
@@ -13761,3 +13859,24 @@ if __name__ == "__main__":
             print(f"  {key.replace('_', ' ').title()}: {status}")
 
         print("\n🚀 Kullanım: python kha.py --test")
+
+    try:
+        if not is_jupyter():
+            print(
+                f"{Colors.CYAN}{Colors.BOLD}KHA-256 TÜM SINIFLAR TESTİ v5.2{Colors.RESET}"
+            )
+            response = input("\nTüm testleri çalıştırmak için ENTER: ")
+            if response.lower() == "q":
+                print_info("Test iptal edildi.")
+                sys.exit(0)
+
+        results = run_all_tests()
+        print_success("\n✅ Tüm testler tamamlandı!")
+
+    except KeyboardInterrupt:
+        print_warning("\nProgram durduruldu.")
+        sys.exit(130)
+    except Exception as e:
+        print_error(f"Hata: {e}")
+        traceback.print_exc()
+        sys.exit(1)
