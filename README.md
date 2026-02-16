@@ -1,5 +1,9 @@
 # Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256
 
+---
+
+# KHA-256 <img src="docs/kha256.jpg" alt="logo" align="right" height="140"/>
+
 ## KEÇECİ HASH ALGORİTMASI (KHA-256) 🇹🇷/Eng
 
 <div align="center">
