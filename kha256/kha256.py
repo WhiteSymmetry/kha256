@@ -218,7 +218,7 @@ if is_jupyter():
 
 
 # Version information
-__version__ = "0.2.3"  # Updated
+__version__ = "0.2.4"  # Updated
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0 license"
 __status__ = "Pre-Production"
@@ -583,7 +583,7 @@ class FortifiedConfig:
     performans %95+ hedeflenir. NIST SP 800-132/63B/90B uyumlu.
     """
 
-    VERSION: ClassVar[str] = "0.2.3"
+    VERSION: ClassVar[str] = "0.2.4"
     ALGORITHM: ClassVar[str] = "KHA-256"
 
     # Çıktı boyutu (bit testi için daha büyük örneklem) (Değişmez - güvenlik
@@ -7274,7 +7274,7 @@ class FortifiedKhaHash256:
 
         return {
             "algorithm": "KHA-256-FORTIFIED",
-            "version": "0.2.3",
+            "version": "0.2.4",
             "security_level": getattr(self.config, "security_level", "256-bit"),
             "config": config_dict,
             "metrics": {
@@ -10014,7 +10014,7 @@ class SimpleKhaHasher:
                 "usb_optimized": True,
                 "anti_gpu": True,
             },
-            "version": "KHA-256 v0.2.3",
+            "version": "KHA-256 v0.2.4",
         }
 
 
