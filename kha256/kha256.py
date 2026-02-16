@@ -60,8 +60,8 @@ from IPython.display import HTML, clear_output, display
 from scipy.stats import chi2, norm
 
 
-def silent_kececi():
-    """Kececi'yi tamamen sustur - hiçbir log, hiçbir print gelmez!"""
+def silent_kn():
+    """kececinumbers'ı sustur - hiçbir log, hiçbir print gelmez!"""
 
     # 1. Tüm logger'ları devre dışı bırak
     for name in list(logging.root.manager.loggerDict.keys()):
@@ -91,15 +91,14 @@ def silent_kececi():
                 setattr(kececinumbers, attr, lambda *a, **kw: None)
 
 
-# HEMEN ÇALIŞTIR!
-silent_kececi()
+silent_kn()
 
 # Logging configuration - SADECE 2 SATIR EKLE!
 logging.basicConfig(
     level=logging.WARNING, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
-# 🔥 TEK SATIRDA KEÇECİ'Yİ SUSTUR!
+# 🔥 kececinumbers'ı sustur!
 logging.getLogger("kececinumbers").disabled = True
 
 logger = logging.getLogger("KHA-256")
@@ -170,7 +169,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("KHA-256")
 
-# 🔥 KEÇECİNUMBERS MODÜLÜNÜ TAMAMEN SUSTUR!
+# 🔥 kececinumbers'ı sustur!
 logging.getLogger("kececinumbers").setLevel(logging.CRITICAL)  # En yüksek seviye
 logging.getLogger("KececiSequence").setLevel(logging.CRITICAL)
 
@@ -203,8 +202,6 @@ logger = logging.getLogger("KHA-256")
 """
 
 # Jupyter kontrolü
-
-
 def is_jupyter():
     try:
         from IPython import get_ipython
@@ -221,12 +218,11 @@ if is_jupyter():
 
 
 # Version information
-__version__ = "0.2.2"  # Updated
+__version__ = "0.2.3"  # Updated
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0 license"
 __status__ = "Pre-Production"
 __certificate__ = "KHA256-PA-2025-001"
-
 req_kececinumbers = "0.9.5"
 
 # KeçeciNumbers check - made API compatible
@@ -424,11 +420,18 @@ def check_serial_info(module):
 if KHA_AVAILABLE and kn is not None:
     check_serial_info(kn)
 
-# ============================================================
-# DÜZELTİLMİŞ KOD (FortifiedKhaHash256 ile entegre)
-# ============================================================
+min_deger=0 
+max_deger=100
+sabit_result = hash_password(b"a", b"scrypt_salt_16!!", is_usb_key=True)
+sabit_sayi = int(sabit_result.split('$')[2], 16) % (max_deger - min_deger + 1) + min_deger
 
+counter = str(time.time_ns() * 1000 + os.getpid() * 1000000)
+rastgele_password = (counter + str(os.times().elapsed)).encode()[:64]
+rastgele_salt = (str(os.getcwd()) + counter[::-1]).encode()[:64]
 
+# ============================================================
+# FortifiedKhaHash256 ile entegre
+# ============================================================
 class KHAcache:
     """
     KHA-256 için güvenli, HMAC korumalı cache sistemi.
@@ -580,7 +583,7 @@ class FortifiedConfig:
     performans %95+ hedeflenir. NIST SP 800-132/63B/90B uyumlu.
     """
 
-    VERSION: ClassVar[str] = "0.2.1"
+    VERSION: ClassVar[str] = "0.2.3"
     ALGORITHM: ClassVar[str] = "KHA-256"
 
     # Çıktı boyutu (bit testi için daha büyük örneklem) (Değişmez - güvenlik
@@ -7271,7 +7274,7 @@ class FortifiedKhaHash256:
 
         return {
             "algorithm": "KHA-256-FORTIFIED",
-            "version": "0.2.1",
+            "version": "0.2.3",
             "security_level": getattr(self.config, "security_level", "256-bit"),
             "config": config_dict,
             "metrics": {
@@ -7284,7 +7287,7 @@ class FortifiedKhaHash256:
 
 
 def test_fortified_memory_hard_fixed():
-    """FortifiedKhaHash256 memory-hard test - FIX EDİLMİŞ!"""
+    """FortifiedKhaHash256 memory-hard test"""
 
     print("\n" + "=" * 70)
     print("🧪 FORTIFIED MEMORY-HARD TEST - FIX EDİLMİŞ!")
@@ -8182,16 +8185,16 @@ def hash_password(
     if not isinstance(salt, bytes) or len(salt) < 16:
         raise ValueError("Salt bytes olmalı ve min 16 byte!")
 
-    # USB varsayılan parametreler ✅
+    # USB varsayılan parametreleri
     if fast_mode:
-        n, r, p = 16384, 8, 1  # 16MB
-        maxmem = 32 * 1024 * 1024  # 32MB
-    elif is_usb_key:  # ← VARSAYILAN
-        n, r, p = 65536, 8, 1  # 64MB
-        maxmem = 128 * 1024 * 1024  # 128MB
-    else:
-        n, r, p = 262144, 8, 1  # 256MB
+        n, r, p = 16384, 8, 1     # 16MB - HIZLI
+        maxmem = 32 * 1024 * 1024
+    elif is_usb_key:  # USB = EN GÜÇLÜ (512MB), varsayılan
+        n, r, p = 262144, 8, 1    # 256MB n  
         maxmem = 512 * 1024 * 1024  # 512MB
+    else:             # NORMAL PC (64MB)
+        n, r, p = 65536, 8, 1     # 64MB
+        maxmem = 128 * 1024 * 1024
 
     digest = hashlib.scrypt(
         password=data,  # <- sadece bytes
@@ -8209,7 +8212,7 @@ def hash_password(
 
 def hash_password_str(password: str, salt: bytes, **kwargs) -> str:
     """String wrapper - salt ZORUNLU"""
-    return hash_password(password.encode("utf-8"), salt, **kwargs)
+    return hash_password(password, salt, **kwargs)
 
 
 """
@@ -10011,7 +10014,7 @@ class SimpleKhaHasher:
                 "usb_optimized": True,
                 "anti_gpu": True,
             },
-            "version": "KHA-256 v0.2",
+            "version": "KHA-256 v0.2.3",
         }
 
 
@@ -13675,6 +13678,200 @@ def test_fortified_memory_hard2():
     except Exception as e:
         print_error(f"  ❌ FortifiedKhaHash256 test hatası: {e}")
         return False
+
+def plot_avalanche_simple(bit_diffs):
+    """Basit avalanche grafiği"""
+    import matplotlib.pyplot as plt
+    import numpy as np
+    
+    plt.figure(figsize=(15, 5))
+    
+    # Histogram
+    plt.subplot(1, 2, 1)
+    plt.hist(bit_diffs, bins=25, alpha=0.7, color='steelblue', edgecolor='black')
+    plt.axvline(128, color='red', linestyle='--', linewidth=2, label='İdeal (128)')
+    plt.axvline(np.mean(bit_diffs), color='darkgreen', linestyle='-', linewidth=2, 
+                label=f'Ortalama ({np.mean(bit_diffs):.2f})')
+    plt.xlabel('Farklı Bit Sayısı')
+    plt.ylabel('Frekans')
+    plt.title('Avalanche Dağılımı')
+    plt.legend()
+    plt.grid(alpha=0.3)
+    
+    # Box plot
+    plt.subplot(1, 2, 2)
+    bp = plt.boxplot(bit_diffs, vert=True, patch_artist=True)
+    bp['boxes'][0].set_facecolor('lightblue')
+    plt.axhline(128, color='red', linestyle='--', label='İdeal')
+    plt.axhline(np.mean(bit_diffs), color='green', linestyle='-', label='Ortalama')
+    plt.ylabel('Farklı Bit Sayısı')
+    plt.title('Kutu Grafiği')
+    plt.legend()
+    plt.grid(alpha=0.3)
+    
+    plt.tight_layout()
+    plt.show()
+
+def kha_rastgele_sayi(min_deger=0, max_deger=100):
+    # Sistem saati + PID + dosya yolunu karıştır
+    seed = str(time.time_ns()) + str(os.getpid()) + str(os.getcwd())
+    
+    # KHA256 ile hash (salt=None ile otomatik salt)
+    hasher = KHA256()
+    hash_result = hasher.hash(seed, salt=None)  # salt=None = otomatik salt
+    
+    # Hex string'i integer'a çevir ve mod al
+    hash_int = int(hash_result, 16)
+    rastgele = (hash_int % (max_deger - min_deger + 1)) + min_deger
+    return rastgele
+
+def rastgele_sayi(min_deger=0, max_deger=100):
+    # Sistem saati + PID + dosya yolunu karıştır
+    seed = str(time.time_ns()) + str(os.getpid()) + str(os.getcwd())
+    # Hash'i mod alarak rastgele sayı üret
+    hash_deger = hash(seed)
+    rastgele = abs(hash_deger) % (max_deger - min_deger + 1) + min_deger
+    return rastgele
+
+def kha256_hard_random(min_deger=0, max_deger=100):
+    hasher = KHA256()
+    # TrueMemoryHardHasher = ASIC-resistant, en güçlü
+    hash_result = hasher.hash(
+        str(time.time_ns()), 
+        salt=None,  # Otomatik secure_random salt
+        memory_hard=True,
+        memory_mb=16  # 16MB memory-hard
+    )
+    hash_int = int(hash_result, 16)
+    return (hash_int % (max_deger - min_deger + 1)) + min_deger
+
+def kha256_memory_hard_random(min_deger=0, max_deger=100):
+    hasher = KHA256()
+    seed = f"{time.time_ns()}_{os.getpid()}"
+    result = hasher.hash(
+        seed,
+        salt=None,
+        memory_hard=True,
+        memory_mb=32  # 32MB ASIC koruması
+    )
+    return int(result, 16) % (max_deger - min_deger + 1) + min_deger
+
+
+def kha256_password_random(password: str, min_deger=0, max_deger=100):
+    # Saf Python salt (16+ byte gerekli)
+    #salt = b"fixed_16byte_salt!!"  # Min 16 byte
+    salt = os.urandom(64)
+    
+    # hash_password(data, salt) - KHA256 Scrypt wrapper
+    hash_result = hash_password(
+        data=password.encode(),
+        salt=salt,
+        is_usb_key=True  # 128MB memory-hard varsayılan
+    )
+    
+    # "KHA256-USB$salt$digest" formatından sadece digest al
+    _, _, digest = hash_result.split('$')
+    return int(digest, 16) % (max_deger - min_deger + 1) + min_deger
+
+def kha256_fortified_random(min_deger=0, max_deger=100):
+    hasher = KHA256()
+    seed = str(time.time_ns())
+    
+    # Zincirleme fortified hash
+    result1 = hasher.hash(seed, memory_hard=True, memory_mb=64)
+    result2 = hasher.hash(result1, memory_hard=True, memory_mb=64)
+    
+    final_int = int(result2, 16)
+    return (final_int % (max_deger - min_deger + 1)) + min_deger
+
+def true_memory_hard_random(min_deger=0, max_deger=100):
+    salt = os.urandom(64)
+    seed = str(time.time_ns()).encode()
+    hasher = TrueMemoryHardHasher(memory_cost_kb=65556, time_cost=3)  # Direkt sınıf!
+    result = hasher.hash(seed, salt)  # Kendi hash metodu
+    return int(result, 16) % (max_deger - min_deger + 1) + min_deger
+
+## 2. MemoryHardHash 
+def memory_hard_hash_random(min_deger=0, max_deger=100):
+    salt = os.urandom(64)
+    seed = f"{time.time_ns()}_{os.getpid()}".encode()
+    hasher = MemoryHardHash(memory_mb=32)
+    result = hasher.hash(seed, salt)
+    return int(result, 16) % (max_deger - min_deger + 1) + min_deger
+
+def memory_hard_engine_random(min_deger=0, max_deger=100):
+    seed = str(time.time_ns()).encode()
+    #salt = b"fixed_engine_salt_32"  # 32 byte salt ZORUNLU
+    salt = os.urandom(32)
+    
+    engine = MemoryHardEngine(memory_mb=128, iterations=3)
+    result = engine.hash(seed, salt)  # Direkt str döner (hex)
+    
+    hash_int = int(result, 16)
+    return hash_int % (max_deger - min_deger + 1) + min_deger
+
+## 4. FortifiedKhaHash256 (Zincirleme)
+def fortified_kha_random(min_deger=0, max_deger=100):
+    salt = os.urandom(64)
+    seed = str(time.time_ns()).encode()
+    fortified = FortifiedKhaHash256()
+    result = fortified.hash(seed, salt)  # Paranoid mod
+    return int(result, 16) % (max_deger - min_deger + 1) + min_deger
+
+## 5. KHA256b (İkinci varyant)
+def kha256b_random(min_deger=0, max_deger=100):
+    hasher = KHA256b()
+    result = hasher.hash(str(time.time_ns()), memory_hard=True, memory_mb=16)
+    return int(result, 16) % (max_deger - min_deger + 1) + min_deger
+
+def scrypt_random(min_deger=0, max_deger=100):
+    # SAF PYTHON - her çağrı benzersiz
+    timestamp = str(time.time_ns())
+    pid = str(os.getpid())
+    seed_data = (timestamp + pid).encode()
+    salt = (timestamp[::-1] + pid).encode()[:64]  # 64 byte salt
+    
+    result = hash_password(seed_data, salt, is_usb_key=True)
+    _, _, digest = result.split('$')
+    return int(digest, 16) % (max_deger - min_deger + 1) + min_deger
+
+## Global Counter (En Güvenli)
+counter = 0
+def gscrypt_random(min_deger=0, max_deger=100):
+    global counter
+    seed = f"{time.time_ns()}_{os.getpid()}_{counter}".encode()
+    salt = f"{counter}_{time.time_ns()}".encode()[:64]
+    counter += 1
+    
+    result = hash_password(seed, salt, is_usb_key=True)
+    _, _, digest = result.split('$')
+    return int(digest, 16) % (max_deger - min_deger + 1) + min_deger
+
+def bscrypt_random(min_deger=0, max_deger=100):
+    # aynı girdi, aynı çıktı verir
+    #salt = b"scrypt_salt_16!!"
+    #password = b"a"
+    # farklı girdi , farklı çıktıverir
+    salt = os.urandom(64)
+    password = os.urandom(16)    
+    result = hash_password(password, salt)
+    _, _, digest = result.split('$')
+    return int(digest, 16) % (max_deger - min_deger + 1) + min_deger
+
+def scrypt_dual_output(min_deger=0, max_deger=100):
+    counter = str(time.time_ns() * 1000 + os.getpid() * 1000000)
+    
+    # SABİT (test/verification)
+    sabit_result = hash_password(b"a", b"scrypt_salt_16!!", is_usb_key=True)
+    sabit_sayi = int(sabit_result.split('$')[2], 16) % (max_deger - min_deger + 1) + min_deger
+    
+    # RASTGELE (gerçek kullanım)
+    rastgele_password = (counter + str(os.times().elapsed)).encode()[:64]
+    rastgele_salt = (str(os.getcwd()) + counter[::-1]).encode()[:64]
+    rastgele_result = hash_password(rastgele_password, rastgele_salt, is_usb_key=True)
+    rastgele_sayi = int(rastgele_result.split('$')[2], 16) % (max_deger - min_deger + 1) + min_deger
+    
+    return sabit_sayi, rastgele_sayi
 
 
 def run_all_tests():
