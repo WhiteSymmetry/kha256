@@ -23,7 +23,7 @@ build:
 requirements:
   host:
     - python {{ python }}
-    - kececinumbers >=0.9.1
+    - kececinumbers >=0.9.5
     - numpy
     - setuptools
     # Other build tools
