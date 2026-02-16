@@ -11,7 +11,7 @@ from typing import Dict, List, Tuple
 # - MAJOR: Incompatible API changes
 # - MINOR: Backwards-compatible functionality additions
 # - PATCH: Backwards-compatible bug fixes
-__version__: str = "0.2.3"
+__version__: str = "0.2.4"
 
 # License information
 __license__: str = "AGPL-3.0-or-later"
