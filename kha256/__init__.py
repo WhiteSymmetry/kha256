@@ -10,7 +10,7 @@ Performanstan fedakarlık edilerek güvenlik maksimize edilmiş versiyondur.
 
 from __future__ import annotations
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0-or-later"
 __copyright__ = "Copyright 2025-2026 Mehmet Keçeci"
@@ -179,6 +179,7 @@ from .kha256 import (
     benchmark_real_cost,
     plot_avalanche_distribution,
     safe_heatmap_plot,
+    plot_avalanche_simple,
 )
 
 # Utility functions
@@ -216,6 +217,23 @@ from .kha256 import (
     print_subheader,
     print_success,
     print_warning,
+    kha_rastgele_sayi,
+    rastgele_sayi,
+    kha256_fortified_random,
+    kha256_password_random,
+    kha256_memory_hard_random,
+    kha256_hard_random,
+    true_memory_hard_random,
+    memory_hard_hash_random,
+    memory_hard_engine_random,
+    fortified_kha_random,
+    kha256b_random,
+    scrypt_random,
+    gscrypt_random,
+    bscrypt_random,
+    scrypt_dual_output,
+    is_jupyter,
+    silent_kn,
 )
 
 # Constants
@@ -391,6 +409,7 @@ __all__: List[str] = [
     # Visualization
     "plot_avalanche_distribution",
     "safe_heatmap_plot",
+    "plot_avalanche_simple",
     
     # Utility functions
     "HKDF",
@@ -402,6 +421,21 @@ __all__: List[str] = [
     "calculate_bit_difference",
     "chacha_avalanche_mix",
     "secure_avalanche_mix",
+    "kha_rastgele_sayi",
+    "rastgele_sayi",
+    "kha256_fortified_random",
+    "kha256_password_random",
+    "kha256_memory_hard_random",
+    "kha256_hard_random",
+    "true_memory_hard_random",
+    "memory_hard_hash_random",
+    "memory_hard_engine_random",
+    "fortified_kha_random",
+    "kha256b_random",
+    "scrypt_random",
+    "gscrypt_random",
+    "bscrypt_random",
+    "scrypt_dual_output",
     
     # Internal functions (exposed for advanced use)
     "_balloon_expand",
