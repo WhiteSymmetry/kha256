@@ -422,8 +422,8 @@ if KHA_AVAILABLE and kn is not None:
 
 min_deger=0 
 max_deger=100
-sabit_result = hash_password(b"a", b"scrypt_salt_16!!", is_usb_key=True)
-sabit_sayi = int(sabit_result.split('$')[2], 16) % (max_deger - min_deger + 1) + min_deger
+#sabit_result = hash_password(b"a", b"scrypt_salt_16!!", is_usb_key=True)
+#sabit_sayi = int(sabit_result.split('$')[2], 16) % (max_deger - min_deger + 1) + min_deger
 
 counter = str(time.time_ns() * 1000 + os.getpid() * 1000000)
 rastgele_password = (counter + str(os.times().elapsed)).encode()[:64]
