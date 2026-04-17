@@ -1,7 +1,7 @@
 # pyproject.toml
 
 [build-system]
-requires = ["setuptools>=82.0.0"]
+requires = ["setuptools>=82.0.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -52,6 +52,6 @@ Repository = "https://github.com/WhiteSymmetry/kha256"
 
 [dependency-groups]
 build = [
-    "setuptools (>=82.0.0)",
+    "setuptools (>=82.0.1)",
     "cython (>=3.2.4)"
 ]
