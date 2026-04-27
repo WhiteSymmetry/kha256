@@ -4,24 +4,24 @@ authors = ["Mehmet Keçeci <mkececi@yaani.com>"]
 channels = ["pypi", "https://prefix.dev/conda-forge", "https://conda.modular.com/max-nightly", "conda-forge", "https://repo.prefix.dev/modular-community"]
 platforms = ["linux-64"]
 name = "kha256"
-version = "0.2.4"
+version = "0.2.5"
 
 [package]
 name = "kha256"
-version = "0.2.4"
+version = "0.2.5"
 license = "AGPL-3.0-or-later"
 
 [dependencies]
 python = ">=3.11"
-pip = ">=25.3"
-conda-build = ">=25.11.1"
-setuptools = ">=82.0.0"
-wheel = ">=0.45.1"
-hatchling = ">=1.28.0"
-setuptools_scm = ">=9.2.2"
-rattler-build = ">=0.55.0"
+pip = ">=26.1"
+conda-build = ">=26.3.0"
+setuptools = ">=82.0.1"
+wheel = ">=0.47.0"
+hatchling = ">=1.29.0"
+setuptools_scm = ">=10.0.5"
+rattler-build = ">=0.63.0"
 quetz = ">=0.10.4"
-sqlalchemy = ">=2.0.45"
+sqlalchemy = ">=2.0.49"
 
 [tasks]
 build = "python -m build"
