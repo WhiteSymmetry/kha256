@@ -218,12 +218,12 @@ if is_jupyter():
 
 
 # Version information
-__version__ = "0.2.4"  # Updated
+__version__ = "0.2.5"  # Updated
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0 license"
 __status__ = "Pre-Production"
 __certificate__ = "KHA256-PA-2025-001"
-req_kececinumbers = "0.9.5"
+req_kececinumbers = "0.9.6"
 
 # KeçeciNumbers check - made API compatible
 KHA_AVAILABLE = True
