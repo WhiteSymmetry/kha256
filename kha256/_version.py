@@ -11,7 +11,7 @@ from typing import Dict, List, Tuple
 # - MAJOR: Incompatible API changes
 # - MINOR: Backwards-compatible functionality additions
 # - PATCH: Backwards-compatible bug fixes
-__version__: str = "0.2.4"
+__version__: str = "0.2.5"
 
 # License information
 __license__: str = "AGPL-3.0-or-later"
@@ -53,20 +53,20 @@ __dependencies__: List[str] = [
 ]
 __extras_require__: Dict[str, List[str]] = {
     "dev": [
-        "pytest>=7.0.0",
-        "pytest-cov>=4.0.0",
-        "black>=23.0.0",
-        "isort>=5.12.0",
-        "mypy>=1.0.0",
-        "flake8>=6.0.0",
+        "pytest>=9.0.3",
+        "pytest-cov>=7.1.0",
+        "black>=26.3.1",
+        "isort>=8.0.1",
+        "mypy>=1.20.2",
+        "flake8>=7.3.0",
     ],
     "docs": [
-        "sphinx>=6.0.0",
-        "sphinx-rtd-theme>=1.2.0",
+        "sphinx>=9.1.0",
+        "sphinx-rtd-theme>3.1.0",
     ],
     "test": [
-        "pytest>=7.0.0",
-        "pytest-benchmark>=4.0.0",
+        "pytest>=9.0.3",
+        "pytest-benchmark>=5.2.3",
     ],
 }
 
