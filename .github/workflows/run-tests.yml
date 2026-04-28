@@ -10,6 +10,10 @@ defaults:
   run:
     shell: bash
 
+runs:
+  using: 'node24'
+  main: 'main.js'
+
 jobs:
   build-test:
     name: Test Run (${{ matrix.python-version }}, ${{ matrix.os }})
