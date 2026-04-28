@@ -5,6 +5,10 @@ on:
     branches: ["main"]
   workflow_dispatch:
 
+runs:
+  using: 'node24'
+  main: 'main.js'
+
 jobs:
   publish:
     name: Publish to PyPI
