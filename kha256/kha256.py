@@ -6694,7 +6694,7 @@ class FortifiedKhaHash256:
         )
 
         print("\n" + "─" * 70)
-        print("🎲 BIT DISTRIBUTION")
+        print("🔀 BIT DISTRIBUTION")
         print("─" * 70)
         print(
             f"   • Min Ones:          {result['bit_min']:,}  (Expected: {int(expected_ones):,})"
@@ -13872,6 +13872,15 @@ def scrypt_dual_output(min_deger=0, max_deger=100):
     rastgele_sayi = int(rastgele_result.split('$')[2], 16) % (max_deger - min_deger + 1) + min_deger
     
     return sabit_sayi, rastgele_sayi
+
+# ========== GÖRÜNTÜ İMZALAMA YARDIMCISI ==========
+def image_signature(image_array: np.ndarray, secret_key: bytes, deterministic: bool = False) -> str:
+    """
+    Bir numpy görüntü dizisinin (RGB uint8) KHA-256 özetini döndürür.
+    deterministic=True ise salt kullanılmaz (sabit çıktı).
+    """
+    kha = KHA256()
+    return kha.hash(image_array.tobytes(), salt=secret_key if not deterministic else b'', deterministic=deterministic)
 
 
 def run_all_tests():
