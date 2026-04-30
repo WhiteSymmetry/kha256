@@ -10,7 +10,7 @@ Performanstan fedakarlık edilerek güvenlik maksimize edilmiş versiyondur.
 
 from __future__ import annotations
 
-__version__ = "0.2.5"
+__version__ = "0.2.6"
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0-or-later"
 __copyright__ = "Copyright 2025-2026 Mehmet Keçeci"
