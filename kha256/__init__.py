@@ -127,6 +127,7 @@ from .kha256 import (
     generate_compact_hwid,
     generate_secure_hwid,
     simple_hmac,
+    image_signature,
 )
 
 # Testing and benchmarking functions
@@ -318,6 +319,7 @@ __all__: List[str] = [
     "verify_password",
     "batch_hash_secure",
     "batch_hash_xxh64",
+    "image_signature",
     
     # Quick hash functions
     "quick_hash",
