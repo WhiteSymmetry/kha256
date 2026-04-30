@@ -218,7 +218,7 @@ if is_jupyter():
 
 
 # Version information
-__version__ = "0.2.5"  # Updated
+__version__ = "0.2.6"  # Updated
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0 license"
 __status__ = "Pre-Production"
