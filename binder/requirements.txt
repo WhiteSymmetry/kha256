@@ -3,7 +3,7 @@ numpy>=2.4.4
 kececinumbers==0.9.6
 pandas>=3.0.2
 matplotlib>=3.10.9
-scipy>=1.7.1
+scipy>=1.17.1
 jupyterlab>=4.5.7
 ipywidgets>=8.1.8
 plotly>=6.7.0
