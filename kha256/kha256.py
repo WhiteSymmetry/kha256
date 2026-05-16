@@ -93,7 +93,7 @@ def silent_kn():
 
 silent_kn()
 
-# Logging configuration - SADECE 2 SATIR EKLE!
+# Logging configuration
 logging.basicConfig(
     level=logging.WARNING, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
@@ -218,12 +218,12 @@ if is_jupyter():
 
 
 # Version information
-__version__ = "0.2.6"  # Updated
+__version__ = "0.2.7"  # Updated
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0 license"
 __status__ = "Pre-Production"
 __certificate__ = "KHA256-PA-2025-001"
-req_kececinumbers = "0.9.6"
+req_kececinumbers = "0.9.9"
 
 # KeçeciNumbers check - made API compatible
 KHA_AVAILABLE = True
