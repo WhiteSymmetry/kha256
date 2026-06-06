@@ -23,9 +23,10 @@ build:
 requirements:
   host:
     - python {{ python }}
-    - kececinumbers >=0.9.5
+    - kececinumbers >=1.0.1
     - numpy
     - setuptools
+    - pip
     # Other build tools
   run:
     - python >=3.11
@@ -42,7 +43,7 @@ test:
     - numpy
   imports:
     - kha256
-    - kececinumbers >=0.9.5
+    - kececinumbers >=1.0.1
     - numpy
 
 about:
