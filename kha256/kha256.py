@@ -223,7 +223,7 @@ __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0 license"
 __status__ = "Pre-Production"
 __certificate__ = "KHA256-PA-2025-001"
-req_kececinumbers = "0.9.9"
+req_kececinumbers = "1.0.1"
 
 # KeçeciNumbers check - made API compatible
 KHA_AVAILABLE = True
