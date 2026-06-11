@@ -19,7 +19,7 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          pip install -y pytest pytest-cov
+          pip install pytest pytest-cov
           # packageName'unuzu local package'i kurun
           pip install -e .
 
