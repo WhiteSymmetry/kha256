@@ -17,7 +17,11 @@ jobs:
         uses: actions/setup-python@v4
 
       - name: Install dependencies
-        run: pip install pytest pytest-cov
+        shell: bash -l {0}
+        run: |
+          pip install -y pytest pytest-cov
+          # packageName'unuzu local package'i kurun
+          pip install -e .
 
       - name: Run tests
         run: pytest --cov --cov-branch --cov-report=xml
