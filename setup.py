@@ -46,12 +46,14 @@ setup(
         'test': [
             "pytest",
             "pytest-cov",
+            "kha256",
         ],
         'dev': [
             "pytest",
             "pytest-cov",
             "twine",
             "wheel",
+            "kha256",
         ]
     },
     classifiers=[
