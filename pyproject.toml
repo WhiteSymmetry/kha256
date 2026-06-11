@@ -40,6 +40,11 @@ dependencies = [
     "scipy",
 ]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+
 [project.optional-dependencies]
 test = ["pytest", "pytest-cov", "pytest-mock", "ruff", "kha256"]
 
