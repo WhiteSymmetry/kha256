@@ -9,16 +9,73 @@ Performanstan fedakarlık edilerek güvenlik maksimize edilmiş versiyondur.
 """
 
 from __future__ import annotations
+from collections import namedtuple
+import logging
+import warnings
+from typing import List, Optional, Union, Any, Dict, Tuple, Callable, Literal, NamedTuple, overload
 
-__version__ = "0.2.8"
+__version__ = "0.2.9"
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0-or-later"
 __copyright__ = "Copyright 2025-2026 Mehmet Keçeci"
 __email__ = "mkececi@yaani.com"
 __certificate__ = "KHA256-PA-2025-001"
+#__version_info__: _VersionInfo
 
-import warnings
-from typing import List, Optional, Union, Any, Dict, Tuple, Callable
+_log = logging.getLogger(__name__)
+
+__bibtex__ = r"""@misc{kececi_2026_18156885,
+  author       = {Keçeci, Mehmet},
+  title        = {KHA-256: A Next-Generation Cryptographic Hash
+                   Function Based on Keçeci Numbers and Mathematical
+                   Constants
+                  },
+  Journal      = {Open Science Articles (OSAs)},
+  month        = jan,
+  year         = 2026,
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.18156885},
+  url          = {https://doi.org/10.5281/zenodo.18156885},
+  Pages        = {30},
+  abstract     = {KHA-256 (Keçeci Hash Algorithm-256) is a novel 
+  cryptographic hash function that departs from conventional 
+  bit-level constructions by leveraging mathematical constants 
+  (e.g., π, e, φ) and the multidimensional algebraic structures 
+  of Keçeci Numbers—encompassing real, complex, quaternion, 
+  octonion, and neutrosophic representations.},
+  Volume    = {2},
+  Number    = {1},
+}"""
+
+# modelled after sys.version_info
+_VersionInfo = namedtuple('_VersionInfo',
+                          'major, minor, micro, releaselevel, serial')
+
+class _VersionInfo(NamedTuple):
+    major: int
+    minor: int
+    micro: int
+    releaselevel: str
+    serial: int
+
+__bibtex__: str
+__version__: str
+#__version_info__: _VersionInfo
+
+def set_loglevel(level: LogLevel) -> None: ...
+
+class _ExecInfo(NamedTuple):
+    executable: str
+    raw_version: str
+    version: Version
+
+class ExecutableNotFoundError(FileNotFoundError): ...
+
+def _get_executable_info(name: str) -> _ExecInfo: ...
+def get_configdir() -> str: ...
+def get_cachedir() -> str: ...
+def get_data_path() -> str: ...
+def matplotlib_fname() -> str: ...
 
 # ======================================================================
 # PUBLIC API - Core classes and functions exposed to package users
