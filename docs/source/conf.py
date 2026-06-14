@@ -16,10 +16,23 @@ version = None
 release = None
 
 try:
+    from importlib.metadata import version
+    release = version("kha256")
+except ImportError:
+    # Paket henüz kurulmamışsa (geliştirme aşaması) fallback
+    import kha256
+    release = getattr(kha256, '__version__', "0.0.0")
+except Exception:
+    release = "0.0.0"
+
+print(f"Kullanılan Sürüm: {release}")
+"""
+try:
     import kha256
     release = getattr(kha256, '__version__', release)
 except ImportError as e:
     print(f"Warning: Could not import kha256: {e}")
+"""
 """    
 try:
     import kha256
