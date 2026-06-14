@@ -2,14 +2,14 @@
 # __init__.py
 
 """
-KHA-256 (Keçeci Hash Algorithm) - A cryptographic hash algorithm.
-
-========================================================
+===============================
+KHA-256 (Keçeci Hash Algorithm)
+===============================
 KEÇECİ HASH ALGORITHM (KEÇECİ HASH ALGORİTMASI), KHA-256
-========================================================
+- A cryptographic hash algorithm.
+
 Security-maximized version with performance trade-offs for maximum security.
 Performanstan fedakarlık edilerek güvenlik maksimize edilmiş versiyondur.
-========================================================
 
 A next-generation cryptographic hash algorithm based on Keçeci Numbers 
 and mathematical constants.
@@ -40,7 +40,7 @@ try:
     __license__ = _meta.get("License", "AGPL-3.0-or-later")
 except Exception:
     # Fallback for development or if metadata is not available
-    __version__ = "0.3.0"
+    __version__ = "0.3.1"
     __author__ = "Mehmet Keçeci"
     __license__ = "AGPL-3.0-or-later"
 
