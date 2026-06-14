@@ -232,11 +232,11 @@ try:
     from . import __version__
 except ImportError:
     # Dosya doğrudan çalıştırıldığında (Örn: python kha256.py) fallback
-    __version__ = "0.2.9"
+    __version__ = "0.3.0"
 
 
 # Version information
-#__version__ = "0.2.9"  # Updated
+#__version__ = "0.3.0"  # Updated
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0-or-later"
 __status__ = "Pre-Production"
