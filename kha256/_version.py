@@ -1,4 +1,7 @@
-"""Version information for the KHA-256 package.
+# -*- coding: utf-8 -*-
+# _version.py
+"""
+Version information for the KHA-256 package.
 
 This module contains version constants and package metadata used throughout
 the KHA-256 cryptographic hash algorithm implementation.
