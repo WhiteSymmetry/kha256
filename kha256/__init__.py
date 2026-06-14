@@ -40,7 +40,7 @@ try:
     __license__ = _meta.get("License", "AGPL-3.0-or-later")
 except Exception:
     # Fallback for development or if metadata is not available
-    __version__ = "0.3.2"
+    __version__ = "0.3.3"
     __author__ = "Mehmet Keçeci"
     __license__ = "AGPL-3.0-or-later"
 
