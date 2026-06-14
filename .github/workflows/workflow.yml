@@ -27,6 +27,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install build
 
+      - name: Build docs
+        run: |
+          pip install -r docs/requirements.txt
+          cd docs && make html
+
       - name: Build the package
         run: python -m build
 
