@@ -21,6 +21,11 @@ requirements:
     - python >=3.11
     - numpy
     - kececinumbers
+    - bcrypt              
+    - argon2-cffi         
+    - blake3              
+    - xxhash              
+    - cryptography        
 
 test:
   imports:
