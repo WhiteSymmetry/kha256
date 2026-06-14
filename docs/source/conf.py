@@ -10,8 +10,38 @@ sys.path.insert(0, os.path.abspath('../..'))
 project = 'KHA-256'
 author = 'Mehmet Keçeci'
 copyright = f"{datetime.now().year}, {author}"
-release = '0.3.2'
-version = '0.3.2'
+#release = '0.3.2'
+#version = '0.3.2
+
+# The full version, including alpha/beta/rc tags
+version = None
+release = None
+
+try:
+    from importlib.metadata import version
+    release = version("kha256")
+except ImportError:
+    # Paket henüz kurulmamışsa (geliştirme aşaması) fallback
+    import kha256
+    release = getattr(kha256, '__version__', "0.0.0")
+except Exception:
+    release = "0.0.0"
+
+print(f"Kullanılan Sürüm: {release}")
+"""
+try:
+    import kha256
+    release = getattr(kha256, '__version__', release)
+except ImportError as e:
+    print(f"Warning: Could not import kha256: {e}")
+"""
+"""    
+try:
+    import kha256
+    release = kha256.__version__
+except ImportError:
+    release = '0.1.3'
+"""
 
 extensions = [
     'sphinx.ext.autodoc',
