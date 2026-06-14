@@ -1,18 +1,16 @@
 # meta.yaml
 package:
   name: kha256
-  version: "{{ environ.get('PKG_VERSION', '0.0.0') }}"
+  version: "0.0.0"  # Workflow tarafından güncellenecek
 
 source:
-  url: "{{ environ.get('PYPI_URL', '') }}"
-  blake2b-256: "{{ environ.get('PYPI_HASH', '') }}"
+  url: ""  # Workflow tarafından güncellenecek
+  blake2b-256: ""  # Workflow tarafından güncellenecek
 
 build:
   number: 0
   noarch: python
   script: "{{ PYTHON }} -m pip install . -vv"
-  entry_points:
-    - kha256 = kha256.cli:main
 
 requirements:
   host:
@@ -33,7 +31,6 @@ test:
 about:
   home: https://github.com/WhiteSymmetry/kha256
   license: AGPL-3.0-or-later
-  license_family: AGPL
   summary: "KHA-256: Next-Generation Cryptographic Hash Algorithm"
   description: |
     KHA-256 (Keçeci Hash Algorithm-256) is a novel cryptographic hash function 
