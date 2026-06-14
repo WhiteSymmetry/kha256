@@ -10,12 +10,12 @@ sys.path.insert(0, os.path.abspath('../..'))
 project = 'KHA-256'
 author = 'Mehmet Keçeci'
 copyright = f"{datetime.now().year}, {author}"
-release = '0.3.2'
-version = '0.3.2'
+#release = '0.3.2'
+#version = '0.3.2'
 
 # The full version, including alpha/beta/rc tags
-#version = None
-#release = None
+version = None
+release = None
 
 try:
     from importlib.metadata import version
