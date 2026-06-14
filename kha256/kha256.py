@@ -1,11 +1,20 @@
 """
-================================================================
+KHA-256 (Keçeci Hash Algorithm) - A cryptographic hash algorithm.
+
+========================================================
 KEÇECİ HASH ALGORITHM (KEÇECİ HASH ALGORİTMASI), KHA-256
-Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256
-================================================================
+========================================================
+Security-maximized version with performance trade-offs for maximum security.
 Performanstan fedakarlık edilerek güvenlik maksimize edilmiş versiyondur.
-It is the version with security maximized at the sacrifice of performance.
-================================================================
+========================================================
+
+A next-generation cryptographic hash algorithm based on Keçeci Numbers 
+and mathematical constants.
+
+:author: Mehmet Keçeci
+:license: AGPL-3.0-or-later
+:copyright: Copyright 2025-2026 Mehmet Keçeci
+
 # pip install -U bcrypt kececinumbers blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography ipywidgets ipython scipy
 # conda install -c conda-forge kececinumbers bcrypt blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography
 # pip install xxhash: # xxh32 collision riski yüksek (64-bit için ~yüz milyonlarda %0.03)
@@ -52,7 +61,7 @@ from datetime import datetime
 from decimal import getcontext
 from functools import lru_cache
 from hmac import compare_digest  # , compare_digicmp
-from typing import Any, Callable, ClassVar, Dict, List, Literal, NamedTuple, Optional, overload, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Literal, NamedTuple, Optional, overload, Tuple, Union, cast
 # pip install xxhash: # xxh32 collision riski yüksek (64-bit için ~yüzmilyonlarda %0.03)
 import xxhash
 
