@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+# setup.py
+
+import ast
 import io
 import re
 from setuptools import setup, find_packages
@@ -12,12 +15,28 @@ with open("README.md", "r", encoding="utf-8") as fh:
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 def get_version():
+    """Parse the AST of __init__.py to find the __version__ assignment safely."""
+    with open('kha256/__init__.py', 'r', encoding='utf-8') as f:
+        tree = ast.parse(f.read())
+        
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == '__version__':
+                    # Eğer atanan değer bir string literal ise (örn: "0.2.9")
+                    if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+                        return node.value.value
+                        
+    raise RuntimeError("Unable to find __version__ in kha256/__init__.py")
+"""
+def get_version():
     with open('kha256/__init__.py', 'r', encoding='utf-8') as f:
         content = f.read()
     match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", content, re.M)
     if match:
         return match.group(1)
     raise RuntimeError("Unable to find version string.")
+"""
 
 def get_install_requires():
     """Kurulum bağımlılıklarını dinamik olarak belirle"""
