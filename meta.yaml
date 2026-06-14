@@ -1,57 +1,46 @@
-{% set version = "0.3.0" %}
-
+# meta.yaml
 package:
   name: kha256
-  version: {{ version }}
+  version: "{{ environ.get('PKG_VERSION', '0.0.0') }}"
 
 source:
-  path: .  # Derlemeyi bu meta.yaml dosyasının bulunduğu dizinden yap
-  url: 
-  blake2b-256: 
-
-channels:
-  - conda-forge
+  url: "{{ environ.get('PYPI_URL', '') }}"
+  blake2b-256: "{{ environ.get('PYPI_HASH', '') }}"
 
 build:
-  noarch: python  # Platformdan bağımsız bir paket oluşturur
-  #script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed"
-  script: "{{ PYTHON }} -m pip install . -vv"
   number: 0
+  noarch: python
+  script: "{{ PYTHON }} -m pip install . -vv"
   entry_points:
-    - kha256 = kha256.__main__:main
+    - kha256 = kha256.cli:main
 
 requirements:
   host:
-    - python {{ python }}
-    - kececinumbers >=1.0.1
-    - numpy
-    - setuptools
+    - python >=3.11
     - pip
-    # Other build tools
+    - setuptools
   run:
     - python >=3.11
     - numpy
-    # Other runtime dependencies
-  build:
-    - python >=3.11
-    - pip
-    - setuptools
-    - numpy
+    - kececinumbers
 
 test:
-  requires:
-    - numpy
   imports:
     - kha256
-    - kececinumbers >=1.0.1
-    - numpy
+  commands:
+    - python -c "import kha256; print(kha256.__version__)"
 
 about:
   home: https://github.com/WhiteSymmetry/kha256
   license: AGPL-3.0-or-later
-  summary: 'Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256.'
+  license_family: AGPL
+  summary: "KHA-256: Next-Generation Cryptographic Hash Algorithm"
   description: |
-    Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256.
+    KHA-256 (Keçeci Hash Algorithm-256) is a novel cryptographic hash function 
+    that leverages mathematical constants and Keçeci Numbers.
   dev_url: https://github.com/WhiteSymmetry/kha256
-  doc_url: https://github.com/WhiteSymmetry/kha256
-  doc_source_url: https://github.com/WhiteSymmetry/kha256/blob/main/README.md
+  doc_url: https://kha256.readthedocs.io
+
+extra:
+  recipe-maintainers:
+    - WhiteSymmetry
