@@ -13,16 +13,29 @@ It is the version with security maximized at the sacrifice of performance.
 
 from __future__ import annotations
 
+import bcrypt
+from blake3 import blake3
+from Crypto.Cipher import ChaCha20
+from Crypto.Hash import SHAKE256
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 import getpass
 import hashlib
 import hmac
+from IPython.display import HTML, clear_output, display
+import ipywidgets as widgets
 import json
 import logging
 import math
+import matplotlib.pyplot as plt
+import numpy as np
 import os
+import pandas as pd
 import platform
 import random
 import re
+from scipy.stats import chi2, norm
 import secrets
 import sqlite3
 import statistics
@@ -39,25 +52,10 @@ from datetime import datetime
 from decimal import getcontext
 from functools import lru_cache
 from hmac import compare_digest  # , compare_digicmp
-from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, Union, cast
-
-import bcrypt
-import ipywidgets as widgets
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-
-# pip install xxhash: # xxh32 collision riski yüksek (64-bit için ~yüz
-# milyonlarda %0.03)
+from typing import Any, Callable, ClassVar, Dict, List, Literal, NamedTuple, Optional, overload, Tuple, Union, cast
+# pip install xxhash: # xxh32 collision riski yüksek (64-bit için ~yüzmilyonlarda %0.03)
 import xxhash
-from blake3 import blake3
-from Crypto.Cipher import ChaCha20
-from Crypto.Hash import SHAKE256
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from IPython.display import HTML, clear_output, display
-from scipy.stats import chi2, norm
+
 
 
 def silent_kn():
@@ -216,11 +214,19 @@ def is_jupyter():
 if is_jupyter():
     from IPython.display import clear_output
 
+# 1. Versiyonu __init__.py'dan içe aktar
+try:
+    # Paket içindeyken (Örn: from my_package import kha256)
+    from . import __version__
+except ImportError:
+    # Dosya doğrudan çalıştırıldığında (Örn: python kha256.py) fallback
+    __version__ = "0.2.9"
+
 
 # Version information
-__version__ = "0.2.9"  # Updated
+#__version__ = "0.2.9"  # Updated
 __author__ = "Mehmet Keçeci"
-__license__ = "AGPL-3.0 license"
+__license__ = "AGPL-3.0-or-later"
 __status__ = "Pre-Production"
 __certificate__ = "KHA256-PA-2025-001"
 req_kececinumbers = "1.0.1"
@@ -583,7 +589,9 @@ class FortifiedConfig:
     performans %95+ hedeflenir. NIST SP 800-132/63B/90B uyumlu.
     """
 
-    VERSION: ClassVar[str] = "0.2.9"
+    #VERSION: ClassVar[str] = "0.2.9"
+    # Sınıf değişkeninde kullan
+    VERSION: ClassVar[str] = __version__
     ALGORITHM: ClassVar[str] = "KHA-256"
 
     # Çıktı boyutu (bit testi için daha büyük örneklem) (Değişmez - güvenlik
@@ -7274,7 +7282,8 @@ class FortifiedKhaHash256:
 
         return {
             "algorithm": "KHA-256-FORTIFIED",
-            "version": "0.2.9",
+            #"version": "0.2.9",
+            "version": __version__,  # Burada doğrudan değişkeni kullan
             "security_level": getattr(self.config, "security_level", "256-bit"),
             "config": config_dict,
             "metrics": {
@@ -10014,7 +10023,9 @@ class SimpleKhaHasher:
                 "usb_optimized": True,
                 "anti_gpu": True,
             },
-            "version": "KHA-256 v0.2.9",
+            #"version": "KHA-256 v0.2.9",
+            # f-string kullanarak dinamik birleştirme yap
+            "version": f"KHA-256 v{__version__}", 
         }
 
 
