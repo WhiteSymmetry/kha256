@@ -1,11 +1,11 @@
 # meta.yaml
 package:
   name: kha256
-  version: "0.0.0"  # Workflow tarafından güncellenecek
+  version: "0.0.0"
 
 source:
-  url: ""  # Workflow tarafından güncellenecek
-  blake2b-256: ""  # Workflow tarafından güncellenecek
+  url: ""
+  blake2b-256: ""
 
 build:
   number: 0
@@ -21,11 +21,11 @@ requirements:
     - python >=3.11
     - numpy
     - kececinumbers
-    - bcrypt              
-    - argon2-cffi         
-    - blake3              
-    - xxhash              
-    - cryptography        
+    - bcrypt
+    - argon2-cffi
+    - blake3
+    - xxhash
+    - cryptography
 
 test:
   imports:
