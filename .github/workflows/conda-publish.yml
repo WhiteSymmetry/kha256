@@ -91,7 +91,65 @@ jobs:
           echo "PYPI_HASH=$PYPI_HASH" >> $GITHUB_ENV
 
       # ================================================================
-      # ADIM 3: Miniconda Kurulumu (DÜZELTİLDİ)
+      # ADIM 3: meta.yaml Dosyasını Dinamik Olarak Güncelle (YENİ!)
+      # ================================================================
+      - name: Update meta.yaml with PyPI source info
+        run: |
+          echo "📝 meta.yaml dosyası güncelleniyor..."
+          
+          # Python ile meta.yaml'i güvenli bir şekilde güncelle
+          python3 << 'EOF'
+          import os
+          import re
+          
+          pypi_url = os.environ['PYPI_URL']
+          pypi_hash = os.environ['PYPI_HASH']
+          pkg_version = os.environ['PKG_VERSION']
+          
+          meta_file = 'meta.yaml'
+          
+          with open(meta_file, 'r', encoding='utf-8') as f:
+              content = f.read()
+          
+          # source.url'yi güncelle
+          content = re.sub(
+              r'(url:\s*)(["\']?)(.*?)\2',
+              f'url: "{pypi_url}"',
+              content,
+              count=1
+          )
+          
+          # source.blake2b-256'ı güncelle
+          content = re.sub(
+              r'(blake2b-256:\s*)(["\']?)(.*?)\2',
+              f'blake2b-256: "{pypi_hash}"',
+              content,
+              count=1
+          )
+          
+          # package.version'ı güncelle (opsiyonel)
+          content = re.sub(
+              r'(version:\s*)(["\']?)(.*?)\2',
+              f'version: "{pkg_version}"',
+              content,
+              count=1
+          )
+          
+          with open(meta_file, 'w', encoding='utf-8') as f:
+              f.write(content)
+          
+          print(f"✅ meta.yaml güncellendi:")
+          print(f"   version: {pkg_version}")
+          print(f"   url: {pypi_url}")
+          print(f"   blake2b-256: {pypi_hash}")
+          EOF
+          
+          echo ""
+          echo "📄 Güncellenmiş meta.yaml (source bölümü):"
+          grep -A 3 "^source:" meta.yaml
+
+      # ================================================================
+      # ADIM 4: Miniconda Kurulumu
       # ================================================================
       - name: Setup Miniconda for Python ${{ matrix.python-version }}
         uses: conda-incubator/setup-miniconda@v3
@@ -102,23 +160,20 @@ jobs:
           channel-priority: strict
           miniforge-version: latest
 
-      # ❌ conda-verify KALDIRILDI - Python 3.13 ile uyumsuz
       - name: Install Conda-Build
         run: |
           echo "📦 Conda-build kuruluyor..."
           conda config --add channels bilgi
           conda config --set channel_priority strict
           
-          # Sadece conda-build ve anaconda-client kur (conda-verify YOK)
           conda install -n base -y \
             conda-build \
             anaconda-client
           
           conda info
-          conda list | grep -E "(conda-build|anaconda-client)"
 
       # ================================================================
-      # ADIM 4: Conda Paketi Oluştur (--no-test)
+      # ADIM 5: Conda Paketi Oluştur (--no-test)
       # ================================================================
       - name: Build the package (skip tests)
         run: |
@@ -146,7 +201,7 @@ jobs:
           find dist -name "*.conda" -o -name "*.tar.bz2" | sort
 
       # ================================================================
-      # ADIM 5: Test Ortamı Oluştur
+      # ADIM 6: Test Ortamı Oluştur
       # ================================================================
       - name: Create test environment
         run: |
@@ -164,7 +219,7 @@ jobs:
           conda list -n test-env | grep -E "(python|numpy|kececinumbers|pytest)" || true
 
       # ================================================================
-      # ADIM 6: Geliştirme Testleri (Opsiyonel)
+      # ADIM 7: Geliştirme Testleri (Opsiyonel)
       # ================================================================
       - name: Run development tests (optional)
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'
@@ -182,7 +237,7 @@ jobs:
           fi
 
       # ================================================================
-      # ADIM 7: Paketi Kur ve Doğrula
+      # ADIM 8: Paketi Kur ve Doğrula
       # ================================================================
       - name: Install and verify the built package
         run: |
@@ -215,7 +270,7 @@ jobs:
           "
 
       # ================================================================
-      # ADIM 8: Debug (Başarısızlık Durumu)
+      # ADIM 9: Debug (Başarısızlık Durumu)
       # ================================================================
       - name: Debug - Environment info
         if: failure()
@@ -226,13 +281,13 @@ jobs:
           conda info
           echo ""
           echo "Test ortamı paketleri:"
-          conda list -n test-env
+          conda list -n test-env || echo "test-env yok"
           echo ""
           echo "Ortam detayları:"
-          conda env export -n test-env
+          conda env export -n test-env || echo "test-env export başarısız"
 
       # ================================================================
-      # ADIM 9: Anaconda Cloud'a Yükle
+      # ADIM 10: Anaconda Cloud'a Yükle
       # ================================================================
       - name: Upload to Anaconda Cloud
         if: success()
@@ -269,7 +324,7 @@ jobs:
           echo "✅ Tüm paketler başarıyla yüklendi!"
 
       # ================================================================
-      # ADIM 10: Temizlik
+      # ADIM 11: Temizlik
       # ================================================================
       - name: Cleanup
         if: always()
@@ -280,7 +335,7 @@ jobs:
           echo "✅ Temizlik tamamlandı"
 
       # ================================================================
-      # ADIM 11: Özet
+      # ADIM 12: Özet
       # ================================================================
       - name: Summary
         if: success()
