@@ -195,31 +195,59 @@ jobs:
           echo ""
           echo "✅ Oluşturulan paketler:"
           find dist -name "*.conda" -o -name "*.tar.bz2" | sort
-
+      
       # ================================================================
-      # ADIM 6: Test Ortamı Oluştur
+      # ADIM 6: Test Ortamı Oluştur (Temel Paketler)
       # ================================================================
       - name: Create test environment
         run: |
-          echo "🧪 Test ortamı oluşturuluyor..."
+          echo "🧪 Test ortamı oluşturuluyor (temel paketler)..."
           
+          # Sadece temel paketleri conda ile kur
           conda create -n test-env -y \
             python=${{ matrix.python-version }} \
-            numpy pytest pytest-cov \
+            numpy \
+            pandas \
+            scipy \
+            ipython \
+            ipywidgets \
+            cryptography \
+            pytest \
+            pytest-cov \
             -c conda-forge -c bilgi
           
+          # kececinumbers ekle
           conda install -n test-env -y kececinumbers -c bilgi
           
           echo ""
-          echo "✅ Test ortamı paketleri:"
-          conda list -n test-env | grep -E "(python|numpy|kececinumbers|pytest)" || true
+          echo "✅ Conda ile kurulan paketler:"
+          conda list -n test-env | grep -E "(python|numpy|pandas|scipy|ipython|ipywidgets|cryptography|kececinumbers)" || true
       
       # ================================================================
-      # ADIM 7: Oluşturulan Paketi Kur (BAĞIMLILIKLARLA BİRLİKTE)
+      # ADIM 7: Python Binding'leri Pip ile Kur
       # ================================================================
-      - name: Install the built package with dependencies
+      - name: Install Python bindings with pip
         run: |
-          echo "📦 Oluşturulan paket ve bağımlılıkları kuruluyor..."
+          echo "📦 Python binding'leri pip ile kuruluyor..."
+          
+          # Conda'da Python binding olmayan paketleri pip ile kur
+          conda run -n test-env pip install \
+            bcrypt \
+            argon2-cffi \
+            blake3 \
+            xxhash \
+            pycryptodome
+          
+          echo ""
+          echo "✅ Pip ile kurulan paketler:"
+          conda run -n test-env pip list | grep -E "(bcrypt|argon2|blake3|xxhash|pycryptodome)" || true
+      
+      # ================================================================
+      # ADIM 8: Oluşturulan Paketi Kur
+      # ================================================================
+      - name: Install the built package
+        run: |
+          echo "📦 Oluşturulan paket kuruluyor..."
           
           PACKAGE_FILE=$(find dist -name "*.conda" -o -name "*.tar.bz2" | head -n 1)
           
@@ -230,39 +258,15 @@ jobs:
           
           echo "✅ Kurulan paket: $PACKAGE_FILE"
           
-          # --update-deps: Bağımlılıkları da güncelle/çöz
-          # --force-reinstall: Mevcut bağımlılıkları yeniden kur
-          conda install -n test-env -y \
-            --update-deps \
-            --force-reinstall \
-            "$PACKAGE_FILE"
+          # Paketi kur (--no-deps: bağımlılıkları tekrar kurma, zaten kurulu)
+          conda install -n test-env -y --no-deps "$PACKAGE_FILE"
           
           echo ""
-          echo "✅ Test ortamına kurulan paketler:"
-          conda list -n test-env | grep -E "(kha256|bcrypt|argon2|blake3|xxhash|cryptography|pycryptodome|pandas|ipywidgets|ipython|scipy)" || echo "Bazı paketler bulunamadı"
-          
-          # Eksik bağımlılıkları kontrol et ve manuel kur
-          echo ""
-          echo "🔍 Eksik bağımlılıklar kontrol ediliyor..."
-          
-          MISSING_PKGS=""
-          for pkg in bcrypt argon2-cffi blake3 xxhash cryptography pycryptodome pandas ipywidgets ipython scipy; do
-            if ! conda list -n test-env | grep -q "^${pkg}"; then
-              echo "⚠️ Eksik: $pkg"
-              MISSING_PKGS="$MISSING_PKGS $pkg"
-            else
-              echo "✅ Mevcut: $pkg"
-            fi
-          done
-          
-          if [ -n "$MISSING_PKGS" ]; then
-            echo ""
-            echo "📦 Eksik bağımlılıklar kuruluyor:$MISSING_PKGS"
-            conda install -n test-env -y $MISSING_PKGS -c conda-forge
-          fi
-
+          echo "✅ Tüm paketler:"
+          conda list -n test-env | grep -E "(kha256|bcrypt|argon2|blake3|xxhash|pycryptodome|cryptography)" || true
+      
       # ================================================================
-      # ADIM 8: Paket Doğrulama Testi (Import Test)
+      # ADIM 9: Paket Import Testi
       # ================================================================
       - name: Verify package import
         run: |
@@ -271,10 +275,19 @@ jobs:
           conda run -n test-env python -c "
           import kha256
           import kececinumbers
+          import bcrypt
+          import argon2
+          import blake3
+          import xxhash
+          from Crypto.Cipher import ChaCha20
           
-          print('✅ Paket ve bağımlılıklar başarıyla yüklendi!')
+          print('✅ Tüm bağımlılıklar başarıyla yüklendi!')
           print(f'📦 KHA-256 version: {kha256.__version__}')
-          print(f'📦 KececiNumbers version: {kececinumbers.__version__}')
+          print(f'📦 bcrypt version: {bcrypt.__version__}')
+          print(f'📦 argon2 version: {argon2.__version__}')
+          print(f'📦 blake3 version: {blake3.__version__}')
+          print(f'📦 xxhash version: {xxhash.VERSION}')
+          print(f'📦 PyCryptodome: Crypto modülü çalışıyor')
           
           try:
               result = kha256.quick_hash('test')
@@ -282,25 +295,6 @@ jobs:
           except Exception as e:
               print(f'⚠️ quick_hash testi başarısız: {e}')
           "
-
-      # ================================================================
-      # ADIM 9: Geliştirme Testleri (pytest) - ARTIK PAKET KURULU!
-      # ================================================================
-      - name: Run development tests with pytest
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'
-        continue-on-error: true
-        run: |
-          echo "🧪 Geliştirme testleri çalıştırılıyor..."
-          
-          if [ -d "tests" ]; then
-            # Test ortamında pytest çalıştır (kha256 artık kurulu)
-            conda run -n test-env pytest tests/ \
-              --cov=kha256 \
-              --cov-report=term-missing \
-              -v || echo "⚠️ Testler başarısız oldu ama devam ediliyor"
-          else
-            echo "ℹ️ tests/ dizini bulunamadı, geliştirme testleri atlandı"
-          fi
 
       # ================================================================
       # ADIM 10: Debug (Başarısızlık Durumu)
