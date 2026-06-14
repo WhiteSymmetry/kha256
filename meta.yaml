@@ -26,6 +26,8 @@ requirements:
     - blake3
     - xxhash
     - cryptography
+    - pycryptodome
+    - pandas
 
 test:
   imports:
