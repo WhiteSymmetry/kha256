@@ -22,7 +22,7 @@ from pathlib import Path
 
 PROJECT_NAME = "KHA-256"
 PROJECT_AUTHOR = "Mehmet Keçeci"
-PROJECT_VERSION = "0.2.9"
+PROJECT_VERSION = "0.3.0"
 PACKAGE_NAME = "kha256"  # Dokümantasyonu oluşturulacak paket
 
 # Dosya yolları
