@@ -239,14 +239,14 @@ jobs:
           
           echo ""
           echo "✅ Test ortamına kurulan paketler:"
-          conda list -n test-env | grep -E "(kha256|bcrypt|argon2|blake3|xxhash|cryptography|pycryptodome|pandasipywidgets|ipython|scipy)" || echo "Bazı paketler bulunamadı"
+          conda list -n test-env | grep -E "(kha256|bcrypt|argon2|blake3|xxhash|cryptography|pycryptodome|pandas|ipywidgets|ipython|scipy)" || echo "Bazı paketler bulunamadı"
           
           # Eksik bağımlılıkları kontrol et ve manuel kur
           echo ""
           echo "🔍 Eksik bağımlılıklar kontrol ediliyor..."
           
           MISSING_PKGS=""
-          for pkg in bcrypt argon2-cffi blake3 xxhash cryptography; do
+          for pkg in bcrypt argon2-cffi blake3 xxhash cryptography pycryptodome pandas ipywidgets ipython scipy; do
             if ! conda list -n test-env | grep -q "^${pkg}"; then
               echo "⚠️ Eksik: $pkg"
               MISSING_PKGS="$MISSING_PKGS $pkg"
