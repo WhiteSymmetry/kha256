@@ -11,7 +11,7 @@ project = 'KHA-256'
 author = 'Mehmet Keçeci'
 copyright = f"{datetime.now().year}, {author}"
 release = '0.3.4'
-version = '0.3.4
+version = '0.3.4'
 
 """
 # The full version, including alpha/beta/rc tags
