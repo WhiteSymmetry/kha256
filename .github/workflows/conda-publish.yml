@@ -239,7 +239,7 @@ jobs:
           
           echo ""
           echo "✅ Test ortamına kurulan paketler:"
-          conda list -n test-env | grep -E "(kha256|bcrypt|argon2|blake3|xxhash|cryptography|pycryptodome|pandas)" || echo "Bazı paketler bulunamadı"
+          conda list -n test-env | grep -E "(kha256|bcrypt|argon2|blake3|xxhash|cryptography|pycryptodome|pandasipywidgets|ipython|scipy)" || echo "Bazı paketler bulunamadı"
           
           # Eksik bağımlılıkları kontrol et ve manuel kur
           echo ""
