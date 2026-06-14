@@ -20,17 +20,12 @@ requirements:
   run:
     - python >=3.11
     - numpy
-    - kececinumbers
-    - bcrypt
-    - argon2-cffi
-    - blake3
-    - xxhash
-    - cryptography
-    - pycryptodome
     - pandas
-    - ipywidgets
-    - ipython
     - scipy
+    - ipython
+    - ipywidgets
+    - cryptography
+    - kececinumbers
 
 test:
   imports:
