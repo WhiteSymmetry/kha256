@@ -91,13 +91,12 @@ jobs:
           echo "PYPI_HASH=$PYPI_HASH" >> $GITHUB_ENV
 
       # ================================================================
-      # ADIM 3: meta.yaml Dosyasını Dinamik Olarak Güncelle (YENİ!)
+      # ADIM 3: meta.yaml Dosyasını Dinamik Olarak Güncelle
       # ================================================================
       - name: Update meta.yaml with PyPI source info
         run: |
           echo "📝 meta.yaml dosyası güncelleniyor..."
           
-          # Python ile meta.yaml'i güvenli bir şekilde güncelle
           python3 << 'EOF'
           import os
           import re
@@ -111,7 +110,6 @@ jobs:
           with open(meta_file, 'r', encoding='utf-8') as f:
               content = f.read()
           
-          # source.url'yi güncelle
           content = re.sub(
               r'(url:\s*)(["\']?)(.*?)\2',
               f'url: "{pypi_url}"',
@@ -119,7 +117,6 @@ jobs:
               count=1
           )
           
-          # source.blake2b-256'ı güncelle
           content = re.sub(
               r'(blake2b-256:\s*)(["\']?)(.*?)\2',
               f'blake2b-256: "{pypi_hash}"',
@@ -127,7 +124,6 @@ jobs:
               count=1
           )
           
-          # package.version'ı güncelle (opsiyonel)
           content = re.sub(
               r'(version:\s*)(["\']?)(.*?)\2',
               f'version: "{pkg_version}"',
@@ -219,29 +215,11 @@ jobs:
           conda list -n test-env | grep -E "(python|numpy|kececinumbers|pytest)" || true
 
       # ================================================================
-      # ADIM 7: Geliştirme Testleri (Opsiyonel)
+      # ADIM 7: Oluşturulan Paketi Kur (TESTTEN ÖNCE!)
       # ================================================================
-      - name: Run development tests (optional)
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'
-        continue-on-error: true
+      - name: Install the built package
         run: |
-          echo "🧪 Geliştirme testleri çalıştırılıyor..."
-          
-          if [ -d "tests" ]; then
-            conda run -n test-env pytest tests/ \
-              --cov=kha256 \
-              --cov-report=term-missing \
-              -v || echo "⚠️ Testler başarısız oldu ama devam ediliyor"
-          else
-            echo "ℹ️ tests/ dizini bulunamadı, geliştirme testleri atlandı"
-          fi
-
-      # ================================================================
-      # ADIM 8: Paketi Kur ve Doğrula
-      # ================================================================
-      - name: Install and verify the built package
-        run: |
-          echo "📦 Oluşturulan paket kuruluyor ve test ediliyor..."
+          echo "📦 Oluşturulan paket kuruluyor..."
           
           PACKAGE_FILE=$(find dist -name "*.conda" -o -name "*.tar.bz2" | head -n 1)
           
@@ -253,6 +231,17 @@ jobs:
           echo "✅ Kurulan paket: $PACKAGE_FILE"
           
           conda install -n test-env -y "$PACKAGE_FILE"
+          
+          echo ""
+          echo "✅ Test ortamına kurulan paketler:"
+          conda list -n test-env | grep kha256 || echo "kha256 bulunamadı"
+
+      # ================================================================
+      # ADIM 8: Paket Doğrulama Testi (Import Test)
+      # ================================================================
+      - name: Verify package import
+        run: |
+          echo "🔍 Paket import testi yapılıyor..."
           
           conda run -n test-env python -c "
           import kha256
@@ -270,7 +259,26 @@ jobs:
           "
 
       # ================================================================
-      # ADIM 9: Debug (Başarısızlık Durumu)
+      # ADIM 9: Geliştirme Testleri (pytest) - ARTIK PAKET KURULU!
+      # ================================================================
+      - name: Run development tests with pytest
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'
+        continue-on-error: true
+        run: |
+          echo "🧪 Geliştirme testleri çalıştırılıyor..."
+          
+          if [ -d "tests" ]; then
+            # Test ortamında pytest çalıştır (kha256 artık kurulu)
+            conda run -n test-env pytest tests/ \
+              --cov=kha256 \
+              --cov-report=term-missing \
+              -v || echo "⚠️ Testler başarısız oldu ama devam ediliyor"
+          else
+            echo "ℹ️ tests/ dizini bulunamadı, geliştirme testleri atlandı"
+          fi
+
+      # ================================================================
+      # ADIM 10: Debug (Başarısızlık Durumu)
       # ================================================================
       - name: Debug - Environment info
         if: failure()
@@ -287,7 +295,7 @@ jobs:
           conda env export -n test-env || echo "test-env export başarısız"
 
       # ================================================================
-      # ADIM 10: Anaconda Cloud'a Yükle
+      # ADIM 11: Anaconda Cloud'a Yükle
       # ================================================================
       - name: Upload to Anaconda Cloud
         if: success()
@@ -324,7 +332,7 @@ jobs:
           echo "✅ Tüm paketler başarıyla yüklendi!"
 
       # ================================================================
-      # ADIM 11: Temizlik
+      # ADIM 12: Temizlik
       # ================================================================
       - name: Cleanup
         if: always()
@@ -335,7 +343,7 @@ jobs:
           echo "✅ Temizlik tamamlandı"
 
       # ================================================================
-      # ADIM 12: Özet
+      # ADIM 13: Özet
       # ================================================================
       - name: Summary
         if: success()
