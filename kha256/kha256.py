@@ -20,7 +20,7 @@ and mathematical constants.
 :copyright: Copyright 2025-2026 Mehmet Keçeci
 
 # pip install -U bcrypt kececinumbers blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography ipywidgets ipython scipy
-# conda install -c conda-forge kececinumbers bcrypt blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography
+# conda install -c conda-forge kececinumbers bcrypt blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography pandas ipywidgets ipython scipy
 # pip install xxhash: # xxh32 collision riski yüksek (64-bit için ~yüz milyonlarda %0.03)
 """
 
@@ -29,7 +29,7 @@ from __future__ import annotations
 import argon2 # pip install argon2-cffi # conda install conda-forge::argon2-cffi
 import bcrypt
 from blake3 import blake3
-from Crypto.Cipher import ChaCha20
+from Crypto.Cipher import ChaCha20 # pip install -U pycryptodome # conda install conda-forge::pycryptodome
 from Crypto.Hash import SHAKE256
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
