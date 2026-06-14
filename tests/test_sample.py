@@ -39,8 +39,8 @@ def test_hash_different_inputs_produce_different_outputs():
     
     assert result1 != result2
 
-salt = os.urandom(16)
-#salt = secrets.token_bytes(64)
+#salt = os.urandom(16)
+salt = secrets.token_bytes(64)
 
 # Basit test
 hasher = kha256.generate_fortified_hasher()
