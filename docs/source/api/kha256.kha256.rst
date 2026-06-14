@@ -1,0 +1,7 @@
+kha256.kha256 module
+====================
+
+.. automodule:: kha256.kha256
+   :members:
+   :show-inheritance:
+   :undoc-members:

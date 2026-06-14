@@ -1,0 +1,15 @@
+kha256 package
+==============
+
+.. automodule:: kha256
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   kha256.kha256
