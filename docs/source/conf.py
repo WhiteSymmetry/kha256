@@ -10,8 +10,8 @@ sys.path.insert(0, os.path.abspath('../..'))
 project = 'KHA-256'
 author = 'Mehmet Keçeci'
 copyright = f"{datetime.now().year}, {author}"
-release = '0.2.9'
-version = '0.2.9'
+release = '0.3.0'
+version = '0.3.0'
 
 extensions = [
     'sphinx.ext.autodoc',
