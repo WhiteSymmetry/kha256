@@ -213,13 +213,13 @@ jobs:
           echo ""
           echo "✅ Test ortamı paketleri:"
           conda list -n test-env | grep -E "(python|numpy|kececinumbers|pytest)" || true
-
+      
       # ================================================================
-      # ADIM 7: Oluşturulan Paketi Kur (TESTTEN ÖNCE!)
+      # ADIM 7: Oluşturulan Paketi Kur (BAĞIMLILIKLARLA BİRLİKTE)
       # ================================================================
-      - name: Install the built package
+      - name: Install the built package with dependencies
         run: |
-          echo "📦 Oluşturulan paket kuruluyor..."
+          echo "📦 Oluşturulan paket ve bağımlılıkları kuruluyor..."
           
           PACKAGE_FILE=$(find dist -name "*.conda" -o -name "*.tar.bz2" | head -n 1)
           
@@ -230,11 +230,36 @@ jobs:
           
           echo "✅ Kurulan paket: $PACKAGE_FILE"
           
-          conda install -n test-env -y "$PACKAGE_FILE"
+          # --update-deps: Bağımlılıkları da güncelle/çöz
+          # --force-reinstall: Mevcut bağımlılıkları yeniden kur
+          conda install -n test-env -y \
+            --update-deps \
+            --force-reinstall \
+            "$PACKAGE_FILE"
           
           echo ""
           echo "✅ Test ortamına kurulan paketler:"
-          conda list -n test-env | grep kha256 || echo "kha256 bulunamadı"
+          conda list -n test-env | grep -E "(kha256|bcrypt|argon2|blake3|xxhash|cryptography)" || echo "Bazı paketler bulunamadı"
+          
+          # Eksik bağımlılıkları kontrol et ve manuel kur
+          echo ""
+          echo "🔍 Eksik bağımlılıklar kontrol ediliyor..."
+          
+          MISSING_PKGS=""
+          for pkg in bcrypt python-argon2 blake3 xxhash cryptography; do
+            if ! conda list -n test-env | grep -q "^${pkg}"; then
+              echo "⚠️ Eksik: $pkg"
+              MISSING_PKGS="$MISSING_PKGS $pkg"
+            else
+              echo "✅ Mevcut: $pkg"
+            fi
+          done
+          
+          if [ -n "$MISSING_PKGS" ]; then
+            echo ""
+            echo "📦 Eksik bağımlılıklar kuruluyor:$MISSING_PKGS"
+            conda install -n test-env -y $MISSING_PKGS -c conda-forge
+          fi
 
       # ================================================================
       # ADIM 8: Paket Doğrulama Testi (Import Test)
