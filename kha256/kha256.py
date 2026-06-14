@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+# kha256.py
+
 """
 KHA-256 (Keçeci Hash Algorithm) - A cryptographic hash algorithm.
 
