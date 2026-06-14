@@ -28,6 +28,9 @@ requirements:
     - cryptography
     - pycryptodome
     - pandas
+    - ipywidgets
+    - ipython
+    - scipy
 
 test:
   imports:
