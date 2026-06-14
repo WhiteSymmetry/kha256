@@ -2,14 +2,15 @@
 # kha256.py
 
 """
-KHA-256 (Keçeci Hash Algorithm) - A cryptographic hash algorithm.
+===============================
+KHA-256 (Keçeci Hash Algorithm)
+===============================
 
-========================================================
 KEÇECİ HASH ALGORITHM (KEÇECİ HASH ALGORİTMASI), KHA-256
-========================================================
+A cryptographic hash algorithm.
 Security-maximized version with performance trade-offs for maximum security.
 Performanstan fedakarlık edilerek güvenlik maksimize edilmiş versiyondur.
-========================================================
+
 
 A next-generation cryptographic hash algorithm based on Keçeci Numbers 
 and mathematical constants.
@@ -25,6 +26,7 @@ and mathematical constants.
 
 from __future__ import annotations
 
+import argon2 # pip install argon2-cffi # conda install conda-forge::argon2-cffi
 import bcrypt
 from blake3 import blake3
 from Crypto.Cipher import ChaCha20
@@ -111,7 +113,21 @@ logging.basicConfig(
 # 🔥 kececinumbers'ı sustur!
 logging.getLogger("kececinumbers").disabled = True
 
-logger = logging.getLogger("KHA-256")
+#logger = logging.getLogger("KHA-256")
+logger = logging.getLogger(__name__)
+"""
+Logger for kha256 module.
+
+Examples
+--------
+>>> import logging
+>>> logger.info("test")
+
+Notes
+-----
+Module-level logger instance.
+"""
+
 """
 class DuplicateLogFilter(logging.Filter):
 
@@ -232,11 +248,11 @@ try:
     from . import __version__
 except ImportError:
     # Dosya doğrudan çalıştırıldığında (Örn: python kha256.py) fallback
-    __version__ = "0.3.0"
+    __version__ = "0.2.9"
 
 
 # Version information
-#__version__ = "0.3.0"  # Updated
+#__version__ = "0.2.9"  # Updated
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0-or-later"
 __status__ = "Pre-Production"
@@ -8464,6 +8480,7 @@ def hash_argon2id(password: str) -> str:
     """
     Production-ready password hashing (Argon2id - en güvenli seçenek).
     Output: 256-bit+ encoded hash.
+    pip install argon2-cffi
     """
     from argon2 import PasswordHasher
 
