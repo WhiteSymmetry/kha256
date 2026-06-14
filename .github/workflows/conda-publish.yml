@@ -314,7 +314,7 @@ jobs:
           conda env export -n test-env || echo "test-env export başarısız"
 
       # ================================================================
-      # ADIM 11: Anaconda Cloud'a Yükle
+      # ADIM 11: Anaconda Cloud'a Yükle (DEBUG EKLENDİ)
       # ================================================================
       - name: Upload to Anaconda Cloud
         if: success()
@@ -323,6 +323,14 @@ jobs:
         run: |
           echo "📤 Anaconda Cloud'a yükleniyor..."
           
+          # Token kontrolü
+          if [ -z "$ANACONDA_TOKEN" ]; then
+            echo "❌ HATA: ANACONDA_TOKEN boş!"
+            exit 1
+          fi
+          echo "✅ Token mevcut (gizli)"
+          
+          # Paket dosyalarını bul
           PACKAGE_FILES=$(find dist -name "*.conda" -o -name "*.tar.bz2")
           
           if [ -z "$PACKAGE_FILES" ]; then
@@ -333,22 +341,41 @@ jobs:
           echo "✅ Yüklenecek paketler:"
           echo "$PACKAGE_FILES"
           
+          # Anaconda client'ı doğrula
+          echo ""
+          echo "🔍 Anaconda client doğrulanıyor..."
+          anaconda -t $ANACONDA_TOKEN whoami || {
+            echo "❌ HATA: Token geçersiz!"
+            exit 1
+          }
+          
+          # Her paketi yükle
           for pkg in $PACKAGE_FILES; do
             echo ""
+            echo "=========================================="
             echo "📦 Yükleniyor: $pkg"
+            echo "=========================================="
+            
+            # Detaylı yükleme (--verbose ekle)
             anaconda -t $ANACONDA_TOKEN upload \
               "$pkg" \
               --user bilgi \
               --label main \
-              --skip-existing \
-              --force || {
+              --force \
+              --verbose || {
                 echo "⚠️ Yükleme başarısız: $pkg"
+                echo "Hata kodu: $?"
                 continue
               }
+            
+            echo "✅ Başarıyla yüklendi: $pkg"
           done
           
           echo ""
-          echo "✅ Tüm paketler başarıyla yüklendi!"
+          echo "=========================================="
+          echo "✅ TÜM PAKETLER YÜKLENDİ"
+          echo "=========================================="
+          echo "🔗 Kontrol: https://anaconda.org/bilgi/kha256"
 
       # ================================================================
       # ADIM 12: Temizlik
