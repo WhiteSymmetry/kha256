@@ -11,3 +11,6 @@ xxhash
 argon2-cffi
 pandas 
 cryptography
+ipywidgets
+ipython
+scipy
