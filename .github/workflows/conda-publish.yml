@@ -169,8 +169,16 @@ jobs:
           conda info
 
       # ================================================================
-      # ADIM 5: Conda Paketi Oluştur (--no-test)
+      # ADIM 5: Conda Paketi Oluştur (TEMİZLİK DAHİL)
       # ================================================================
+      - name: Clean environment before build
+        run: |
+          echo "🧹 Derleme öncesi temizlik yapılıyor..."
+          rm -rf build/ dist/ *.egg-info kha256.egg-info
+          find . -type d -name "__pycache__" -exec rm -rf {} + || true
+          find . -name "*.pyc" -delete || true
+          conda clean --all --yes
+
       - name: Build the package (skip tests)
         run: |
           echo "=========================================="
@@ -193,8 +201,8 @@ jobs:
           fi
           
           echo ""
-          echo "✅ Oluşturulan paketler:"
-          find dist -name "*.conda" -o -name "*.tar.bz2" | sort
+          echo "✅ Oluşturulan paketler ve boyutları:"
+          ls -lh dist/noarch/
       
       # ================================================================
       # ADIM 6: Test Ortamı Oluştur (Temel Paketler)
