@@ -314,57 +314,59 @@ jobs:
           conda env export -n test-env || echo "test-env export başarısız"
 
       # ================================================================
-      # ADIM 11: Anaconda Cloud'a Yükle (DEBUG EKLENDİ)
+      # ADIM 11: Anaconda Cloud'a Yükle (KOMUT BULUNAMADI HATASI DÜZELTİLDİ)
       # ================================================================
       - name: Upload to Anaconda Cloud
         if: success()
+        shell: bash -l {0}  # <-- KRİTİK: Conda'yı PATH'e ekler
         env:
           ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
         run: |
           echo "📤 Anaconda Cloud'a yükleniyor..."
           
-          # Token kontrolü
+          # 1. Token var mı kontrol et
           if [ -z "$ANACONDA_TOKEN" ]; then
-            echo "❌ HATA: ANACONDA_TOKEN boş!"
+            echo "❌ HATA: ANACONDA_TOKEN GitHub Secrets'ta tanımlı değil!"
             exit 1
           fi
-          echo "✅ Token mevcut (gizli)"
+          echo "✅ Token bulundu."
           
-          # Paket dosyalarını bul
+          # 2. anaconda-client'ın yüklü olduğundan %100 emin ol
+          echo "🔧 anaconda-client kontrol ediliyor/yükleniyor..."
+          conda install -n base -y anaconda-client || pip install anaconda-client
+          
+          # 3. Token doğrulama (Artık "command not found" hatası vermeyecek)
+          echo "🔍 Token doğrulanıyor..."
+          anaconda -t $ANACONDA_TOKEN whoami
+          if [ $? -ne 0 ]; then
+            echo "❌ HATA: Token gerçekten geçersiz veya Anaconda'ya bağlanılamadı!"
+            exit 1
+          fi
+          echo "✅ Token geçerli!"
+          
+          # 4. Paket dosyalarını bul
           PACKAGE_FILES=$(find dist -name "*.conda" -o -name "*.tar.bz2")
           
           if [ -z "$PACKAGE_FILES" ]; then
-            echo "❌ HATA: Yüklenecek paket dosyası yok!"
+            echo "❌ HATA: Yüklenecek paket dosyası bulunamadı!"
             exit 1
           fi
           
           echo "✅ Yüklenecek paketler:"
           echo "$PACKAGE_FILES"
           
-          # Anaconda client'ı doğrula
-          echo ""
-          echo "🔍 Anaconda client doğrulanıyor..."
-          anaconda -t $ANACONDA_TOKEN whoami || {
-            echo "❌ HATA: Token geçersiz!"
-            exit 1
-          }
-          
-          # Her paketi yükle
+          # 5. Yükleme işlemini yap
           for pkg in $PACKAGE_FILES; do
             echo ""
-            echo "=========================================="
             echo "📦 Yükleniyor: $pkg"
-            echo "=========================================="
             
-            # Detaylı yükleme (--verbose ekle)
             anaconda -t $ANACONDA_TOKEN upload \
               "$pkg" \
               --user bilgi \
               --label main \
               --force \
               --verbose || {
-                echo "⚠️ Yükleme başarısız: $pkg"
-                echo "Hata kodu: $?"
+                echo "⚠️ Yükleme sırasında hata oluştu: $pkg"
                 continue
               }
             
@@ -373,10 +375,9 @@ jobs:
           
           echo ""
           echo "=========================================="
-          echo "✅ TÜM PAKETLER YÜKLENDİ"
-          echo "=========================================="
+          echo "🎉 TÜM PAKETLER ANACONDA CLOUD'A YÜKLENDİ"
           echo "🔗 Kontrol: https://anaconda.org/bilgi/kha256"
-
+          echo "=========================================="
       # ================================================================
       # ADIM 12: Temizlik
       # ================================================================
