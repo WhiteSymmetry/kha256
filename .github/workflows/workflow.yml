@@ -32,6 +32,15 @@ jobs:
           pip install -r docs/requirements.txt
           cd docs && make html
 
+      - name: Clean unnecessary files before build
+        run: |
+          echo "🧹 Gereksiz dosyalar temizleniyor..."
+          find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+          find . -name "*.pyc" -delete 2>/dev/null || true
+          find . -name "*.pyo" -delete 2>/dev/null || true
+          rm -rf build/ dist/ *.egg-info .pytest_cache .mypy_cache
+          echo "✅ Temizlik tamamlandı"
+
       - name: Build the package
         run: python -m build
 
