@@ -314,7 +314,7 @@ jobs:
           conda env export -n test-env || echo "test-env export başarısız"
 
       # ================================================================
-      # ADIM 11: Anaconda Cloud'a Yükle (MUTLAK YOL İLE KESİN ÇÖZÜM)
+      # ADIM 11: Anaconda Cloud'a Yükle (DÜZELTİLDİ)
       # ================================================================
       - name: Upload to Anaconda Cloud
         if: success()
@@ -334,7 +334,7 @@ jobs:
           CONDA_BIN="$CONDA/bin"
           echo "🔧 Conda executable yolu: $CONDA_BIN"
           
-          # anaconda-client yüklü mü kontrol et, yoksa kur
+          # anaconda-client yüklü mü kontrol et
           if ! command -v $CONDA_BIN/anaconda &> /dev/null; then
             echo "⚠️ anaconda-client bulunamadı, kuruluyor..."
             conda install -n base -y anaconda-client
@@ -342,7 +342,7 @@ jobs:
             echo "✅ anaconda-client zaten kurulu."
           fi
           
-          # 3. Token doğrulama (MUTLAK YOL KULLANARAK)
+          # 3. Token doğrulama
           echo "🔍 Token doğrulanıyor..."
           $CONDA_BIN/anaconda -t $ANACONDA_TOKEN whoami
           if [ $? -ne 0 ]; then
@@ -362,31 +362,40 @@ jobs:
           echo "✅ Yüklenecek paketler:"
           echo "$PACKAGE_FILES"
           
-          # 5. Yükleme işlemini yap (MUTLAK YOL)
+          # 5. Yükleme işlemini yap (DÜZELTİLDİ: --verbose kaldırıldı)
+          UPLOAD_SUCCESS=false
           for pkg in $PACKAGE_FILES; do
             echo ""
             echo "📦 Yükleniyor: $pkg"
             
-            # NOT: Aynı sürümü tekrar deniyorsanız '--force' kullanın (üzerine yazar).
-            # Eğer aynı sürüm varsa ATLASIN istiyorsanız '--force' yerine '--skip-existing' yazın.
+            # --verbose KALDIRILDI, sadece --force kullanılıyor
             $CONDA_BIN/anaconda -t $ANACONDA_TOKEN upload \
               "$pkg" \
               --user bilgi \
               --label main \
-              --force \
-              --verbose || {
-                echo "⚠️ Yükleme sırasında hata oluştu: $pkg"
-                continue
-              }
+              --force
             
-            echo "✅ Başarıyla yüklendi: $pkg"
+            if [ $? -eq 0 ]; then
+              echo "✅ Başarıyla yüklendi: $pkg"
+              UPLOAD_SUCCESS=true
+            else
+              echo "❌ Yükleme başarısız: $pkg"
+              exit 1  # Hata durumunda workflow'u durdur
+            fi
           done
           
-          echo ""
-          echo "=========================================="
-          echo "🎉 TÜM PAKETLER ANACONDA CLOUD'A YÜKLENDİ"
-          echo "🔗 Kontrol: https://anaconda.org/bilgi/kha256"
-          echo "=========================================="
+          # 6. Gerçek başarı kontrolü
+          if [ "$UPLOAD_SUCCESS" = true ]; then
+            echo ""
+            echo "=========================================="
+            echo "🎉 TÜM PAKETLER ANACONDA CLOUD'A YÜKLENDİ"
+            echo "🔗 Kontrol: https://anaconda.org/bilgi/kha256"
+            echo "=========================================="
+          else
+            echo ""
+            echo "❌ HATA: Hiçbir paket yüklenemedi!"
+            exit 1
+          fi
   
       # ================================================================
       # ADIM 12: Temizlik
