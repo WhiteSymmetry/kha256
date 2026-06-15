@@ -56,7 +56,19 @@ setup(
     author_email="mkececi@yaani.com",
     maintainer_email="mkececi@yaani.com",
     url="https://github.com/WhiteSymmetry/kha256",
-    packages=find_packages(),
+    #packages=find_packages(),
+    packages=find_packages(
+        include=["kha256", "kha256.*"],
+        exclude=[
+            "binder", "content", "data", "notebooks",
+            "tests", "tests.*",
+            "docs", "docs.*",
+            "examples", "examples.*",
+            "build", "dist",
+            "*.tests", "*.tests.*", ".github",
+        ]
+    ),
+    include_package_data=True,
     package_data={
         "kha256": ["__init__.py", "_version.py", "*.pyi"]
     },
