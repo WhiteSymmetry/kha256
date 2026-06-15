@@ -10,7 +10,11 @@ source:
 build:
   number: 0
   noarch: python
-  script: "{{ PYTHON }} -m pip install . -vv"
+  #script: "{{ PYTHON }} -m pip install . -vv"
+  script: |
+    {{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv
+  # --no-deps: Bağımlılıkları pip kurmasın (conda kuracak)
+  # --no-build-isolation: Daha hızlı build
 
 requirements:
   host:
