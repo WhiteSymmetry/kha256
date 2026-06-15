@@ -314,32 +314,39 @@ jobs:
           conda env export -n test-env || echo "test-env export başarısız"
 
       # ================================================================
-      # ADIM 11: Anaconda Cloud'a Yükle (KOMUT BULUNAMADI HATASI DÜZELTİLDİ)
+      # ADIM 11: Anaconda Cloud'a Yükle (MUTLAK YOL İLE KESİN ÇÖZÜM)
       # ================================================================
       - name: Upload to Anaconda Cloud
         if: success()
-        shell: bash -l {0}  # <-- KRİTİK: Conda'yı PATH'e ekler
         env:
           ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
         run: |
           echo "📤 Anaconda Cloud'a yükleniyor..."
           
-          # 1. Token var mı kontrol et
+          # 1. Token kontrolü
           if [ -z "$ANACONDA_TOKEN" ]; then
             echo "❌ HATA: ANACONDA_TOKEN GitHub Secrets'ta tanımlı değil!"
             exit 1
           fi
           echo "✅ Token bulundu."
           
-          # 2. anaconda-client'ın yüklü olduğundan %100 emin ol
-          echo "🔧 anaconda-client kontrol ediliyor/yükleniyor..."
-          conda install -n base -y anaconda-client || pip install anaconda-client
+          # 2. Conda bin yolunu tanımla
+          CONDA_BIN="$CONDA/bin"
+          echo "🔧 Conda executable yolu: $CONDA_BIN"
           
-          # 3. Token doğrulama (Artık "command not found" hatası vermeyecek)
+          # anaconda-client yüklü mü kontrol et, yoksa kur
+          if ! command -v $CONDA_BIN/anaconda &> /dev/null; then
+            echo "⚠️ anaconda-client bulunamadı, kuruluyor..."
+            conda install -n base -y anaconda-client
+          else
+            echo "✅ anaconda-client zaten kurulu."
+          fi
+          
+          # 3. Token doğrulama (MUTLAK YOL KULLANARAK)
           echo "🔍 Token doğrulanıyor..."
-          anaconda -t $ANACONDA_TOKEN whoami
+          $CONDA_BIN/anaconda -t $ANACONDA_TOKEN whoami
           if [ $? -ne 0 ]; then
-            echo "❌ HATA: Token gerçekten geçersiz veya Anaconda'ya bağlanılamadı!"
+            echo "❌ HATA: Token geçersiz veya Anaconda'ya bağlanılamadı!"
             exit 1
           fi
           echo "✅ Token geçerli!"
@@ -355,12 +362,14 @@ jobs:
           echo "✅ Yüklenecek paketler:"
           echo "$PACKAGE_FILES"
           
-          # 5. Yükleme işlemini yap
+          # 5. Yükleme işlemini yap (MUTLAK YOL)
           for pkg in $PACKAGE_FILES; do
             echo ""
             echo "📦 Yükleniyor: $pkg"
             
-            anaconda -t $ANACONDA_TOKEN upload \
+            # NOT: Aynı sürümü tekrar deniyorsanız '--force' kullanın (üzerine yazar).
+            # Eğer aynı sürüm varsa ATLASIN istiyorsanız '--force' yerine '--skip-existing' yazın.
+            $CONDA_BIN/anaconda -t $ANACONDA_TOKEN upload \
               "$pkg" \
               --user bilgi \
               --label main \
@@ -378,6 +387,7 @@ jobs:
           echo "🎉 TÜM PAKETLER ANACONDA CLOUD'A YÜKLENDİ"
           echo "🔗 Kontrol: https://anaconda.org/bilgi/kha256"
           echo "=========================================="
+  
       # ================================================================
       # ADIM 12: Temizlik
       # ================================================================
