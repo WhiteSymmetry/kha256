@@ -2,55 +2,52 @@
 """Sphinx configuration for KHA-256."""
 
 import os
+import re
 import sys
 from datetime import datetime
 
+# Proje kök dizinini Python yoluna ekle
 sys.path.insert(0, os.path.abspath('../..'))
 
+# ======================================================================
+# PROJECT INFORMATION
+# ======================================================================
 project = 'KHA-256'
 author = 'Mehmet Keçeci'
 copyright = f"{datetime.now().year}, {author}"
-release = '0.3.4'
-version = '0.3.4'
 
-"""
-# The full version, including alpha/beta/rc tags
-version = None
-release = None
+# ======================================================================
+# VERSION DETECTION (3 Aşamalı Güvenli Yöntem)
+# ======================================================================
+def get_version():
+    """Versiyonu 3 farklı yöntemle almaya çalışır."""
+    
+    # 1. YÖNTEM: Paket kuruluysa importlib.metadata'den oku
+    try:
+        from importlib.metadata import version as pkg_version
+        return pkg_version("kha256")
+    except Exception:
+        pass
+    
+    # 2. YÖNTEM: __init__.py dosyasını regex ile oku (import etmeden!)
+    try:
+        init_path = os.path.join(os.path.abspath('../..'), 'kha256', '__init__.py')
+        with open(init_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        match = re.search(r'^__version__\s*=\s*["\']([^"\']+)["\']', content, re.MULTILINE)
+        if match:
+            return match.group(1)
+    except Exception:
+        pass
+    
+    # 3. YÖNTEM: Fallback - Sabit değer
+    return "0.3.5"
 
-try:
-    from importlib.metadata import version
-    release = version("kha256")
-except ImportError:
-    # Paket henüz kurulmamışsa (geliştirme aşaması) fallback
-    import kha256
-    release = getattr(kha256, '__version__', "0.0.0")
-except Exception:
-    release = "0.0.0"
+# Versiyonu al ve ata
+release = get_version()
+version = release  # version = kısa versiyon (örn: "0.3"), release = tam versiyon
 
-print(f"Kullanılan Sürüm: {release
-"""
-"""
-try:
-    import kha256
-    release = getattr(kha256, '__version__', release)
-except ImportError as e:
-    print(f"Warning: Could not import kha256: {e}")
-"""
-"""    
-try:
-    import kha256
-    release = kha256.__version__
-except ImportError:
-    release = '0.1.3'
-"""
-"""    
-try:
-    import kha256
-    release = kha256.__version__
-except ImportError:
-    release = '0.1.3'
-"""
+print(f"📦 KHA-256 Dokümantasyon Sürümü: {release}")
 
 extensions = [
     'sphinx.ext.autodoc',
