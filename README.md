@@ -101,6 +101,12 @@
 - **Uniformluk Testi** - Bit dağılım analizi
 - **Performans Benchmark** - Hız ve verimlilik testleri
 
+---
+
+* 0.3.7. qKHA256: quantum random
+
+---
+
 ## 📦 Kurulum
 
 ### Gereksinimler
