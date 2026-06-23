@@ -22,6 +22,9 @@ and mathematical constants.
 # pip install -U bcrypt kececinumbers blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography ipywidgets ipython scipy
 # conda install -c conda-forge kececinumbers bcrypt blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography pandas ipywidgets ipython scipy
 # pip install xxhash: # xxh32 collision riski yüksek (64-bit için ~yüz milyonlarda %0.03)
+
+* 0.3.7. qKHA256: quantum random
+
 """
 
 from __future__ import annotations
@@ -29,6 +32,13 @@ from __future__ import annotations
 import argon2 # pip install argon2-cffi # conda install conda-forge::argon2-cffi
 import bcrypt
 from blake3 import blake3
+from collections import defaultdict
+from contextlib import contextmanager
+from dataclasses import dataclass
+from datetime import datetime
+from decimal import getcontext
+from functools import lru_cache
+from hmac import compare_digest  # , compare_digicmp
 from Crypto.Cipher import ChaCha20 # pip install -U pycryptodome # conda install conda-forge::pycryptodome
 from Crypto.Hash import SHAKE256
 from cryptography.hazmat.primitives import hashes
@@ -49,6 +59,7 @@ import pandas as pd
 import platform
 import random
 import re
+import requests
 from scipy.stats import chi2, norm
 import secrets
 import sqlite3
@@ -59,16 +70,12 @@ import threading
 import time
 import traceback
 import uuid
-from collections import defaultdict
-from contextlib import contextmanager
-from dataclasses import dataclass
-from datetime import datetime
-from decimal import getcontext
-from functools import lru_cache
-from hmac import compare_digest  # , compare_digicmp
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Literal, NamedTuple, Optional, overload, Tuple, Union, cast
 # pip install xxhash: # xxh32 collision riski yüksek (64-bit için ~yüzmilyonlarda %0.03)
 import xxhash
+
+from . import __version__  # paket __init__.py'de tanımlı
+
 
 
 
@@ -248,7 +255,7 @@ try:
     from . import __version__
 except ImportError:
     # Dosya doğrudan çalıştırıldığında (Örn: python kha256.py) fallback
-    __version__ = "0.2.9"
+    __version__ = "0.3.7"
 
 
 # Version information
@@ -257,7 +264,7 @@ __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0-or-later"
 __status__ = "Pre-Production"
 __certificate__ = "KHA256-PA-2025-001"
-req_kececinumbers = "1.0.1"
+req_kececinumbers = "1.0.5"
 
 # KeçeciNumbers check - made API compatible
 KHA_AVAILABLE = True
@@ -1444,7 +1451,8 @@ class KHA256:
     def __init__(self):
         self._salt_length = 32
         self._metrics = {"hash_count": 0, "total_time_ms": 0.0, "memory_hard_count": 0}
-        self._version = "2.5.0"
+        #self._version = "0.3.7"
+        self._version = __version__  # __init__.py'den al
 
     def hash(
         self,
@@ -1542,9 +1550,189 @@ class KHA256:
     def metrics(self) -> Dict[str, Any]:
         return self._metrics.copy()
 
+def get_quantum_bytes(length: int, verbose: bool = False) -> Tuple[bytes, str]:
+    """
+    ANU kuantum rastgele sayı API'sinden 'length' byte üretir.
+    Ham uint16 değerlerini big-endian 2 byte olarak birleştirir.
+    """
+    CHUNK_SIZE = 1000  # API maksimum 1000 öğe döner
+    needed_u16 = (length + 1) // 2  # kaç uint16 gerektiği
+    all_bytes = bytearray()
+
+    for i in range(0, needed_u16, CHUNK_SIZE):
+        chunk = min(CHUNK_SIZE, needed_u16 - i)
+        url = f"https://qrng.anu.edu.au/API/jsonI.php?length={chunk}&type=uint16"
+        try:
+            resp = requests.get(url, timeout=15)
+            if resp.status_code == 200:
+                data = resp.json().get("data", [])
+                if len(data) >= chunk:
+                    for val in data[:chunk]:
+                        all_bytes.extend(val.to_bytes(2, 'big'))
+                    if verbose:
+                        print(f"✅ Kuantum API: {len(data[:chunk])*2} byte alındı")
+                else:
+                    if verbose:
+                        print("⚠️ API yetersiz veri döndü, fallback'e geçiliyor.")
+                    return _fallback_bytes(length, verbose), "fallback"
+            else:
+                if verbose:
+                    print(f"⚠️ API hatası {resp.status_code}")
+                return _fallback_bytes(length, verbose), "fallback"
+        except Exception as e:
+            if verbose:
+                print(f"⚠️ API bağlantı hatası: {e}")
+            return _fallback_bytes(length, verbose), "fallback"
+
+    # Tam olarak length byte döndür (fazlalık varsa kes)
+    return bytes(all_bytes[:length]), "api"
+
+def _fallback_bytes(length: int, verbose: bool = False) -> bytes:
+    if verbose:
+        print("↳ secrets.token_bytes ile devam ediliyor.")
+    return secrets.token_bytes(length)
+
+class qKHA256:
+    """
+    qKHA-256 - Quantum KHA-256
+    ==========================================
+    ✓ Hiçbir standart hash'ten kod alınmamıştır
+    ✓ Tüm sabitler matematiksel irrasyonellerden üretilmiştir
+    ✓ Perfect avalanche hedefi: 128.00/128.00
+    ✓ HMAC desteği
+    ✓ real quantum random
+    ==========================================
+    """
+
+    __slots__ = ("_salt_length", "_metrics", "_version")
+
+    def __init__(self):
+        self._salt_length = 32
+        self._metrics = {"hash_count": 0, "total_time_ms": 0.0, "memory_hard_count": 0}
+        self._version = __version__  # __init__.py'den al
+
+    def _generate_salt(self, quantum: bool = True, verbose: bool = False) -> bytes:
+        """Kuantum (varsa) ya da sistem random ile salt üret."""
+        if quantum:
+            salt_bytes, source = get_quantum_bytes(self._salt_length, verbose=verbose)
+            if source == "api":
+                return salt_bytes
+            # fallback olmuşsa da döner, yukarıda fallback zaten secrets ile yapılıyor
+        # quantum False ise ya da üretim başarısız olup fallback döndüyse
+        return secrets.token_bytes(self._salt_length)
+
+    def hash(
+        self,
+        data: Union[str, bytes],
+        salt: Optional[bytes] = None,
+        *,
+        deterministic: bool = False,
+        memory_hard: bool = False,
+        memory_mb: int = 1,
+        quantum: bool = True,          # yeni parametre
+        verbose: bool = False          # kuantum API durumunu görmek için
+    ) -> str:
+        start = time.perf_counter()
+        data_bytes = data.encode("utf-8") if isinstance(data, str) else data
+
+        if deterministic:
+            if salt is None:
+                raise ValueError("Deterministic modda salt gerekli!")
+            result = DeterministicHash.hash(data_bytes + salt).hex()
+            self._update_metrics(start)
+            return result
+
+        if memory_hard:
+            if salt is None:
+                salt = self._generate_salt(quantum=quantum, verbose=verbose)
+            result = MemoryHardHash(memory_mb).hash(data_bytes, salt)
+            self._update_metrics(start)
+            self._metrics["memory_hard_count"] += 1
+            return result
+
+        if salt is None:
+            salt = self._generate_salt(quantum=quantum, verbose=verbose)
+
+        # Pre-processing
+        prepared = bytearray(data_bytes)
+        for i in range(len(prepared)):
+            prepared[i] ^= salt[i % len(salt)]
+            prepared[i] = KHAUtils.rotl8(prepared[i], ROT_PRE)
+            prepared[i] ^= (i * int(PI)) & 0xFF
+
+        result = CoreHash.hash(bytes(prepared), salt)
+
+        final = bytearray(result)
+        for i in range(len(final)):
+            final[i] ^= salt[i % len(salt)]
+            final[i] ^= data_bytes[i % len(data_bytes)]
+            final[i] = KHAUtils.rotl8(final[i], ROT_POST)
+            final[i] ^= TransformFunctions.chaos(i) & 0xFF
+
+        self._update_metrics(start)
+        return bytes(final).hex()
+
+    def hmac(self, key: bytes, message: Union[str, bytes]) -> str:
+        """
+        KHA-256 HMAC (Hash-based Message Authentication Code)
+        """
+        msg_bytes = message.encode("utf-8") if isinstance(message, str) else message
+
+        # Key padding - HMAC standardı
+        if len(key) > 64:
+            key = DeterministicHash.hash(key)
+        if len(key) < 64:
+            key = key + b"\x00" * (64 - len(key))
+
+        # HMAC: hash(o_key_pad || hash(i_key_pad || message))
+        o_key_pad = bytes(x ^ 0x5C for x in key[:64])
+        i_key_pad = bytes(x ^ 0x36 for x in key[:64])
+
+        # Deterministic mod kullan (salt yok)
+        inner_hash = self.hash(i_key_pad + msg_bytes, b"", deterministic=True)
+        outer_hash = self.hash(
+            o_key_pad + bytes.fromhex(inner_hash), b"", deterministic=True
+        )
+
+        return outer_hash
+
+    def verify(
+        self, data: Union[str, bytes], hash_str: str, salt: bytes, **kwargs
+    ) -> bool:
+        """Hash doğrulama"""
+        computed = self.hash(data, salt, **kwargs)
+        return compare_digest(computed.encode(), hash_str.encode())
+
+    def _update_metrics(self, start: float):
+        elapsed = (time.perf_counter() - start) * 1000
+        self._metrics["hash_count"] += 1
+        self._metrics["total_time_ms"] += elapsed
+
+    @property
+    def version(self) -> str:
+        return self._version
+
+    @property
+    def metrics(self) -> Dict[str, Any]:
+        return self._metrics.copy()
+
+## 3. Kullanım örneği
+qhasher = qKHA256()
+
+# Kuantum salt ile hash (varsayılan)
+h1 = qhasher.hash("merhaba dünya", verbose=True)
+
+# Klasik güvenli random ile hash
+h2 = qhasher.hash("merhaba dünya", quantum=False)
+
+# Doğrulama
+salt = secrets.token_bytes(32)
+h3 = qhasher.hash("veri", salt=salt, quantum=True)
+assert qhasher.verify("veri", h3, salt, quantum=True)
+
 
 # ============================================================================
-# 8. STREAMING HASH SINIFI - KESİN ÇÖZÜM (ARTIK ÇALIŞIYOR!)
+# 8. STREAMING HASH SINIFI
 # ============================================================================
 
 
