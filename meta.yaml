@@ -45,6 +45,9 @@ requirements:
     - kececinumbers
     - python-xxhash
     - pycryptodome
+    - bcrypt
+    - argon2-cffi
+    - blake3
 
 test:
   imports:
