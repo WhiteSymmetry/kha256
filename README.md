@@ -290,9 +290,7 @@ hasher = run_comprehensive_test()
 
 ---
 
-=============================
 KHA - KAPSAMLI GÜVENLİK TESTİ
-=============================
 
   [Config İşleniyor] Mode: Normal
     • salt_length: 32 bytes
@@ -434,9 +432,9 @@ PERFORMANS ÖZETİ
   KHA başarı oranı: 0.0%
   Güvenlik kontrolleri: 0
 
-================================================================================
+
 SONUÇ: KHA-256 FORTIFIED
-================================================================================
+
 ✓ İYİ - Çakışma ve avalanche testleri başarılı
 
 ---
