@@ -35,6 +35,17 @@ requirements:
    - python >=3.11  # hypercomplex uyumlu versiyon
    - numpy  # kha256 numpy kullanıyor
    - pip
+   - pandas
+   - scipy
+   - ipython
+   - ipywidgets
+   - cryptography
+   - kececinumbers
+   - python-xxhash
+   - pycryptodome
+   - bcrypt
+   - argon2-cffi
+   - blake3 
 
 # tests to validate that the package works as expected
 #tests:
