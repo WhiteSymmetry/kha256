@@ -20,18 +20,18 @@ wheel = ">=0.47.0"
 hatchling = ">=1.29.0"
 setuptools_scm = ">=9.2.2"
 rattler-build = ">=0.63.0"
-numpy
-pandas
-scipy
-ipython
-ipywidgets
-cryptography
+numpy = ">=2.4.6"
+pandas = ">=3.0.3"
+scipy = ">=1.18.0"
+ipython = ">=9.14.1"
+ipywidgets = ">=8.1.8"
+cryptography = ">=49.0.0"
 kececinumbers = ">=1.0.5"
-python-xxhash
-pycryptodome
-bcrypt
-argon2-cffi
-blake3
+python-xxhash = ">=3.7.0"
+pycryptodome = ">=3.23.0"
+bcrypt = ">=5.0.0"
+argon2-cffi = ">=25.1.0"
+blake3 = ">=1.0.9"
 
 [tasks]
 build = "python -m build"
