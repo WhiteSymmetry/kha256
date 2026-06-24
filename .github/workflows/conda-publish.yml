@@ -211,7 +211,7 @@ jobs:
         run: |
           echo "🧪 Test ortamı oluşturuluyor (temel paketler)..."
           
-          # Sadece temel paketleri conda ile kur
+          # Sadece temel bilimsel paketleri kur
           conda create -n test-env -y \
             python=${{ matrix.python-version }} \
             numpy \
@@ -219,12 +219,6 @@ jobs:
             scipy \
             ipython \
             ipywidgets \
-            cryptography \
-            python-xxhash \
-            pycryptodome \
-            bcrypt \
-            argon2-cffi \
-            blake3 \
             pytest \
             pytest-cov \
             -c conda-forge -c bilgi
@@ -233,28 +227,38 @@ jobs:
           conda install -n test-env -y kececinumbers -c bilgi
           
           echo ""
-          echo "✅ Conda ile kurulan paketler:"
-          conda list -n test-env | grep -E "(python|numpy|pandas|scipy|ipython|ipywidgets|cryptography|kececinumbers|python-xxhash|pycryptodome|bcrypt|argon2|cffi|blake3)" || true
-      
+          echo "✅ Temel paketler kuruldu"
+          
       # ================================================================
-      # ADIM 7: Python Binding'leri Pip ile Kur
+      # ADIM 7: Kriptografik Paketleri Conda ile Kur
       # ================================================================
-      - name: Install Python bindings with pip
+      - name: Install cryptographic packages with conda
         run: |
-          echo "📦 Python binding'leri pip ile kuruluyor..."
+          echo "🔐 Kriptografik paketler conda ile kuruluyor..."
           
-          # Conda'da Python binding olmayan paketleri pip ile kur
-          #conda run -n test-env pip install \
-            #bcrypt \
-            #argon2-cffi \
-            #blake3 \
-            #xxhash \
-            #pycryptodome
+          # Her paketi ayrı ayrı kur (solver hatası önlemek için)
+          echo "📦 cryptography kuruluyor..."
+          conda install -n test-env -y cryptography -c conda-forge
           
-          #echo ""
-          #echo "✅ Pip ile kurulan paketler:"
-          #conda run -n test-env pip list | grep -E "(bcrypt|argon2|blake3|xxhash|pycryptodome)" || true
-      
+          echo "📦 pycryptodome kuruluyor..."
+          conda install -n test-env -y pycryptodome -c conda-forge
+          
+          echo "📦 bcrypt kuruluyor..."
+          conda install -n test-env -y bcrypt -c conda-forge
+          
+          echo "📦 argon2-cffi kuruluyor..."
+          conda install -n test-env -y argon2-cffi -c conda-forge
+          
+          echo "📦 blake3 kuruluyor..."
+          conda install -n test-env -y blake3 -c conda-forge
+          
+          echo "📦 python-xxhash kuruluyor..."
+          conda install -n test-env -y python-xxhash -c conda-forge
+          
+          echo ""
+          echo "✅ Kriptografik paketler kuruldu:"
+          conda list -n test-env | grep -E "(cryptography|pycryptodome|bcrypt|argon2|blake3|python-xxhash)" || true      
+
       # ================================================================
       # ADIM 8: Oluşturulan Paketi Kur
       # ================================================================
@@ -276,8 +280,8 @@ jobs:
           
           echo ""
           echo "✅ Tüm paketler:"
-          conda list -n test-env | grep -E "(kha256|bcrypt|argon2|cffi|blake3|python-xxhash|pycryptodome|cryptography|pycryptodome)" || true
-      
+          conda list -n test-env | grep -E "(kha256|cryptography|pycryptodome|bcrypt|argon2|blake3|python-xxhash)" || true
+          
       # ================================================================
       # ADIM 9: Paket Import Testi
       # ================================================================
