@@ -148,6 +148,7 @@ print(f"Hash: {hash_result}")
 ### Şifre Hashleme
 ```python
 from kha256 import hash_password
+import secrets
 import os
 
 #  minimum 16 byte salt gereksinim
@@ -179,6 +180,7 @@ python -m kha256 --demo
 ### Özelleştirilmiş Hasher
 ```python
 from kha256 import FortifiedKhaHash256, FortifiedConfig
+import secrets
 
 # Özel konfigürasyon
 config = FortifiedConfig(
@@ -203,12 +205,14 @@ print(f"Hash: {hash_result}")
 ### Batch İşlemleri
 ```python
 from kha256 import FortifiedKhaHash256
+import secrets
 
 hasher = FortifiedKhaHash256()
 
 # Çoklu veri hash'leme
 data_list = ["veri1", "veri2", "veri3", "veri4"]
-hashes = [hasher.hash(data) for data in data_list]
+salt = secrets.token_bytes(64)  # Güçlü tuz
+hashes = [hasher.hash(data, salt) for data in data_list]
 
 # Dosya hash'leme
 def hash_file(file_path):
@@ -232,12 +236,49 @@ print(f"Durum: {results['status']}")
 # Çıktı: EXCELLENT, GOOD, ACCEPTABLE veya POOR
 ```
 
+---
+
+[Config İşleniyor] Mode: Normal
+    • salt_length: 32 bytes
+    • iterations: 4
+    • rounds: 6
+    ✓ NORMAL MODE
+Statistical Avalanche Effect Test running...
+  10/100 | avg=51.41%
+  20/100 | avg=50.43%
+  30/100 | avg=50.21%
+  40/100 | avg=50.23%
+  50/100 | avg=50.17%
+  60/100 | avg=50.32%
+  70/100 | avg=50.31%
+  80/100 | avg=50.33%
+  90/100 | avg=50.14%
+  100/100 | avg=50.14%
+Ortalama Bit Değişimi: 50.14%
+İdeal Aralıkta: 90.00%
+Durum: GOOD
+
+---
+
 ### Çakışma Testi
 ```python
 results = hasher.test_collision_resistance(samples=5000)
 print(f"Çakışma Sayısı: {results['collisions']}")
 print(f"Çakışma Oranı: {results['collision_rate_percent']:.6f}%")
 ```
+
+---
+
+Gelişmiş Çakışma Testi Çalıştırılıyor...
+  1000/5000 tamamlandı
+  2000/5000 tamamlandı
+  3000/5000 tamamlandı
+  4000/5000 tamamlandı
+  5000/5000 tamamlandı
+Çakışma Sayısı: 0
+Çakışma Oranı: 0.000000%
+
+---
 
 ### Kapsamlı Test
 ```python
@@ -246,6 +287,159 @@ from kha256 import run_comprehensive_test
 # Tüm testleri çalıştır
 hasher = run_comprehensive_test()
 ```
+
+---
+
+================================================================================
+KHA - KAPSAMLI GÜVENLİK TESTİ
+================================================================================
+
+  [Config İşleniyor] Mode: Normal
+    • salt_length: 32 bytes
+    • iterations: 3
+    • rounds: 6
+    ✓ NORMAL MODE
+
+GÜVENLİK RAPORU:
+----------------------------------------
+  Algoritma: KHA-256-FORTIFIED
+  Versiyon: 0.3.7
+  Güvenlik Seviyesi: NIST_COMPLIANT_PRODUCTION
+  Kuantum Direnci: True
+  Bellek Sertleştirme: True
+  Yan Kanal Koruma: True
+
+1. TEMEL FONKSİYON TESTİ
+----------------------------------------
+  Boş string                     ''
+    → b3fd740cba36e2cd9e645818116fccfd318c6de0858d4f8e7a419132... (1.54ms)
+  Tek karakter                   'a'
+    → 39172576c8dfffb850920585436684b7f624cd30e761bf43ff054554... (1.23ms)
+  Basit metin                    'Merhaba Dünya!'
+    → 9254f6a533b324e3f3e377d9e0d830fa0006f22c8eafe105882dc067... (1.36ms)
+  Uzun tekrar                    'KKKKKKKKKKKKKKKKKKKKKKKK...'
+    → 271ba4824c56e4ddcd161a297e42b952a2ed1b1278baac3b628cc7db... (1.47ms)
+  Rastgele veri (128 byte)       '905447b6a3dea502baff62a3cd34b800a98c1e7b00d6ef71...'
+    → 00d7d58a2596afb0d735d5a16802f86e55528931d47d74723f86ff91... (1.10ms)
+  Unicode metin                  'İçerik: özel karakterler...'
+    → 856d43383e9243d649ee95aae50b0440b674ed3667ed853ba478a625... (1.42ms)
+
+2. AVALANCHE TESTİ (100 örnek)
+----------------------------------------
+Statistical Avalanche Effect Test running...
+  10/100 | avg=48.67%
+  20/100 | avg=50.37%
+  30/100 | avg=50.16%
+  40/100 | avg=49.95%
+  50/100 | avg=49.84%
+  60/100 | avg=49.90%
+  70/100 | avg=49.88%
+  80/100 | avg=49.83%
+  90/100 | avg=49.69%
+  100/100 | avg=49.69%
+  Ortalama bit değişimi: 49.691%
+  Standart sapma: 2.785
+  Hamming mesafesi: 127.2
+  İdeal aralıkta: 94.00%
+  Durum: GOOD
+
+3. ÇAKIŞMA TESTİ (10000 örnek)
+----------------------------------------
+Gelişmiş Çakışma Testi Çalıştırılıyor...
+  Çakışma sayısı: 0
+  Çakışma oranı: 0.00000000%
+  Yakın çakışma: 0
+  Durum: EXCELLENT
+
+4. UNIFORMLUK TESTİ (10000 örnek)
+----------------------------------------
+🔬 Uniformity test running with 100 samples...
+  Progress: |██░░░░░░░░░░░░░░░░░░|     10/100 ( 10%)
+  Progress: |████░░░░░░░░░░░░░░░░|     20/100 ( 20%)
+  Progress: |██████░░░░░░░░░░░░░░|     30/100 ( 30%)
+  Progress: |████████░░░░░░░░░░░░|     40/100 ( 40%)
+  Progress: |██████████░░░░░░░░░░|     50/100 ( 50%)
+  Progress: |████████████░░░░░░░░|     60/100 ( 60%)
+  Progress: |██████████████░░░░░░|     70/100 ( 70%)
+  Progress: |████████████████░░░░|     80/100 ( 80%)
+  Progress: |██████████████████░░|     90/100 ( 90%)
+  Progress: |████████████████████|    100/100 (100%)
+
+══════════════════════════════════════════════════════════════════════
+                      🏁 UNIFORMITY TEST RESULTS                       
+══════════════════════════════════════════════════════════════════════
+
+📊 OVERALL STATUS: ✨ EXCELLENT
+   ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+
+┌─────────┬──────────────────────────────┬────────────┬─────────────┐
+│   #     │           TEST                │   RESULT   │   STATS     │
+├─────────┼──────────────────────────────┼────────────┼─────────────┤
+│   1     │ Bit Distribution Test        │ ✅ PASS     │ χ²=104.52 │
+│         │                              │            │ p=1.0000 │
+├─────────┼──────────────────────────────┼────────────┼─────────────┤
+│   2     │ Byte Distribution Test       │ ✅ PASS     │ χ²=267.04 │
+│         │                              │            │ p=0.2897 │
+├─────────┼──────────────────────────────┼────────────┼─────────────┤
+│   3     │ NIST Runs Test              │ ✅ PASS     │ z=0.521  │
+│         │                              │            │ p=0.6345 │
+├─────────┼──────────────────────────────┼────────────┼─────────────┤
+│   4     │ Run Length Test             │ ✅ PASS     │ μ=1.989  │
+│         │                              │            │ σ=1.395  │
+└─────────┴──────────────────────────────┴────────────┴─────────────┘
+
+──────────────────────────────────────────────────────────────────────
+📊 DETAILED STATISTICS
+──────────────────────────────────────────────────────────────────────
+   • Test Duration:     0.14 seconds
+   • Samples:           100
+   • Hash Length:       32 bytes (256 bits)
+   • Total Runs:        12,868
+   • Zero/One Runs:     6,432 / 6,436
+
+──────────────────────────────────────────────────────────────────────
+📈 RUN LENGTH ANALYSIS
+──────────────────────────────────────────────────────────────────────
+   • Observed Mean:     1.9894  (Theoretical: 2.0000)
+   • Observed Std Dev:  1.3950  (Theoretical: 1.4142)
+   • Difference:        0.0106  (Ideal: <0.01)
+   • Z-Score:           0.848
+   • P-Value:           0.39657658
+   ▶ PRATICAL VERDICT:  ✓ GOOD
+
+──────────────────────────────────────────────────────────────────────
+🔀 BIT DISTRIBUTION
+──────────────────────────────────────────────────────────────────────
+   • Min Ones:          32  (Expected: 50)
+   • Max Ones:          65  (Expected: 50)
+   • Mean Ones:         49.64  (Expected: 50.00)
+   • Std Dev:           4.50
+
+══════════════════════════════════════════════════════════════════════
+             🏁 TEST COMPLETED • 100 samples • ✨ EXCELLENT             
+══════════════════════════════════════════════════════════════════════
+
+  Chi-square (bit): 104.5
+  Chi-square (byte): 267.0
+  Ortalama run uzunluğu: 1.989
+  Bit uniform mu: True
+  Byte uniform mu: True
+  Durum: ✨ EXCELLENT
+
+PERFORMANS ÖZETİ
+----------------------------------------
+  Toplam hash: 406
+  Ortalama süre: 0.00ms
+  Toplam operasyon: 0
+  KHA başarı oranı: 0.0%
+  Güvenlik kontrolleri: 0
+
+================================================================================
+SONUÇ: KHA-256 FORTIFIED
+================================================================================
+✓ İYİ - Çakışma ve avalanche testleri başarılı
+
+---
 
 ## 📊 Performans
 
@@ -433,7 +627,7 @@ almış olmalısınız. Almadıysanız, <http://www.gnu.org/licenses/> adresine 
 
 ### Install via Pip
 ```bash
-pip install kha256==0.8.4
+pip install kha256==0.3.7
 pip install numpy>=1.20.0
 ```
 
@@ -491,14 +685,15 @@ python -m kha256 --demo
 ### Customized Hasher
 ```python
 from kha256 import FortifiedKhaHash256, FortifiedConfig
+import secrets
 
 # Custom configuration
 config = FortifiedConfig(
     iterations=20,           # More iterations
     shuffle_layers=16,       # More mixing layers
-    salt_length=128,         # Longer salt
+    salt_length=64,         # Longer salt
     double_hashing=True,     # Double hashing active
-    enable_quantum_resistance=True  # Quantum resistance
+    #enable_quantum_resistance=True  # Quantum resistance
 )
 
 # Create hasher
@@ -515,12 +710,14 @@ print(f"Hash: {hash_result}")
 ### Batch Operations
 ```python
 from kha256 import FortifiedKhaHash256
+import secrets
 
 hasher = FortifiedKhaHash256()
 
 # Multiple data hashing
 data_list = ["data1", "data2", "data3", "data4"]
-hashes = [hasher.hash(data) for data in data_list]
+salt = secrets.token_bytes(64)  # Strong salt
+hashes = [hasher.hash(data, salt) for data in data_list]
 
 # File hashing
 def hash_file(file_path):
