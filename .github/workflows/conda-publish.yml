@@ -234,7 +234,7 @@ jobs:
           
           echo ""
           echo "✅ Conda ile kurulan paketler:"
-          conda list -n test-env | grep -E "(python|numpy|pandas|scipy|ipython|ipywidgets|cryptography|kececinumbers|xxhash|pycryptodome|bcrypt|argon2-cffi|blake3)" || true
+          conda list -n test-env | grep -E "(python|numpy|pandas|scipy|ipython|ipywidgets|cryptography|kececinumbers|python-xxhash|pycryptodome|bcrypt|argon2-cffi|blake3)" || true
       
       # ================================================================
       # ADIM 7: Python Binding'leri Pip ile Kur
@@ -244,15 +244,15 @@ jobs:
           echo "📦 Python binding'leri pip ile kuruluyor..."
           
           # Conda'da Python binding olmayan paketleri pip ile kur
-          conda run -n test-env pip install \
+          #conda run -n test-env pip install \
             #bcrypt \
             #argon2-cffi \
             #blake3 \
             #xxhash \
             #pycryptodome
           
-          echo ""
-          echo "✅ Pip ile kurulan paketler:"
+          #echo ""
+          #echo "✅ Pip ile kurulan paketler:"
           #conda run -n test-env pip list | grep -E "(bcrypt|argon2|blake3|xxhash|pycryptodome)" || true
       
       # ================================================================
@@ -276,7 +276,7 @@ jobs:
           
           echo ""
           echo "✅ Tüm paketler:"
-          conda list -n test-env | grep -E "(kha256|bcrypt|argon2|blake3|xxhash|pycryptodome|cryptography|pycryptodome)" || true
+          conda list -n test-env | grep -E "(kha256|bcrypt|argon2|blake3|python-xxhash|pycryptodome|cryptography|pycryptodome)" || true
       
       # ================================================================
       # ADIM 9: Paket Import Testi
