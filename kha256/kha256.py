@@ -20,7 +20,7 @@ and mathematical constants.
 :copyright: Copyright 2025-2026 Mehmet Keçeci
 
 # pip install -U bcrypt kececinumbers blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography ipywidgets ipython scipy
-# conda install -c conda-forge kececinumbers bcrypt blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography pandas ipywidgets ipython scipy
+# conda install -c conda-forge kececinumbers bcrypt blake3 pycryptodome python-xxhash argon2-cffi pandas numpy cryptography pandas ipywidgets ipython scipy
 # pip install xxhash: # xxh32 collision riski yüksek (64-bit için ~yüz milyonlarda %0.03)
 
 * 0.3.7. qKHA256: quantum random
@@ -71,7 +71,6 @@ import time
 import traceback
 import uuid
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Literal, NamedTuple, Optional, overload, Tuple, Union, cast
-# pip install xxhash: # xxh32 collision riski yüksek (64-bit için ~yüzmilyonlarda %0.03)
 import xxhash
 
 from . import __version__  # paket __init__.py'de tanımlı
