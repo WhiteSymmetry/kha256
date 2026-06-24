@@ -276,7 +276,7 @@ jobs:
           
           echo ""
           echo "✅ Tüm paketler:"
-          conda list -n test-env | grep -E "(kha256|bcrypt|argon2|blake3|python-xxhash|pycryptodome|cryptography|pycryptodome)" || true
+          conda list -n test-env | grep -E "(kha256|bcrypt|argon2-cffi|blake3|python-xxhash|pycryptodome|cryptography|pycryptodome)" || true
       
       # ================================================================
       # ADIM 9: Paket Import Testi
