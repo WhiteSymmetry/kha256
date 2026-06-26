@@ -254,10 +254,19 @@ jobs:
           
           echo "📦 python-xxhash kuruluyor..."
           conda install -n test-env -y python-xxhash -c conda-forge
+
+          echo "📦 aiohttp kuruluyor..."
+          conda install -n test-env -y aiohttp -c conda-forge
+
+          echo "📦 python-dotenv kuruluyor..."
+          conda install -n test-env -y python-dotenv -c conda-forge
+
+          echo "📦 nest-asyncio2 kuruluyor..."
+          conda install -n test-env -y nest-asyncio2 -c conda-forge
           
           echo ""
           echo "✅ Kriptografik paketler kuruldu:"
-          conda list -n test-env | grep -E "(cryptography|pycryptodome|bcrypt|argon2|blake3|python-xxhash)" || true      
+          conda list -n test-env | grep -E "(aiohttp|dotenv|nest-asyncio2|cryptography|pycryptodome|bcrypt|argon2|blake3|python-xxhash)" || true      
 
       # ================================================================
       # ADIM 8: Oluşturulan Paketi Kur
@@ -280,7 +289,7 @@ jobs:
           
           echo ""
           echo "✅ Tüm paketler:"
-          conda list -n test-env | grep -E "(kha256|cryptography|pycryptodome|bcrypt|argon2|blake3|python-xxhash)" || true
+          conda list -n test-env | grep -E "(kha256|aiohttp|dotenv|nest-asyncio2|cryptography|pycryptodome|bcrypt|argon2|blake3|python-xxhash)" || true
           
       # ================================================================
       # ADIM 9: Paket Import Testi
@@ -296,6 +305,9 @@ jobs:
           import argon2
           import blake3
           import xxhash
+          import aiohttp
+          import dotenv
+          import nest_asyncio2
           from Crypto.Cipher import ChaCha20
           
           print('✅ Tüm bağımlılıklar başarıyla yüklendi!')
@@ -304,6 +316,7 @@ jobs:
           print(f'📦 argon2 version: {argon2.__version__}')
           print(f'📦 blake3 version: {blake3.__version__}')
           print(f'📦 xxhash version: {xxhash.VERSION}')
+          print(f'📦 aiohttp version: {aiohttp.__version__}')
           print(f'📦 PyCryptodome: Crypto modülü çalışıyor')
           
           try:
