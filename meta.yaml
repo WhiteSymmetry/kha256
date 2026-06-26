@@ -48,6 +48,9 @@ requirements:
     - bcrypt
     - argon2-cffi
     - blake3
+    - aiohttp
+    - python-dotenv
+    - nest_asyncio
 
 test:
   imports:
