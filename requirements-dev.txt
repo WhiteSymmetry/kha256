@@ -16,4 +16,4 @@ ipython
 scipy
 aiohttp
 python-dotenv
-nest_asyncio
+nest-asyncio2
