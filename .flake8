@@ -9,7 +9,9 @@ exclude =
     *.egg-info,
     .venv,
     venv
-ignore = 
-    E203,  # whitespace before ':'
-    W503,  # line break before binary operator
-    E501   # line too long (black/black ile yönet)
+
+# Yorumları ayrı satıra yazın, ignore satırının içine DEĞİL
+# E203: whitespace before ':'
+# W503: line break before binary operator  
+# E501: line too long
+ignore = E203, W503, E501
