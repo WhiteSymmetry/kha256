@@ -50,7 +50,7 @@ requirements:
     - blake3
     - aiohttp
     - python-dotenv
-    - nest_asyncio
+    - nest-asyncio2
 
 test:
   imports:
