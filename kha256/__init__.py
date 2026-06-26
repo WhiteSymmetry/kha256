@@ -36,8 +36,14 @@ try:
     
     __version__ = _pkg_version("kha256")
     _meta = _pkg_metadata("kha256")
-    __author__ = _meta.get("Author-email", "Mehmet Keçeci <mkececi@yaani.com>")
-    __license__ = _meta.get("License", "AGPL-3.0-or-later")
+    
+    # ✅ DÜZELTME: PackageMetadata'yi dict'e çevir
+    # PackageMetadata objesi get() metoduna sahip değil
+    _meta_dict = dict(_meta.items())
+    
+    __author__ = _meta_dict.get("Author-email", "Mehmet Keçeci <mkececi@yaani.com>")
+    __license__ = _meta_dict.get("License", "AGPL-3.0-or-later")
+    
 except Exception:
     # Fallback for development or if metadata is not available
     __version__ = "0.4.0"
