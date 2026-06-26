@@ -48,7 +48,7 @@ requirements:
    - blake3
    - aiohttp
    - python-dotenv
-   - nest_asyncio
+   - nest-asyncio2
 
 # tests to validate that the package works as expected
 #tests:
