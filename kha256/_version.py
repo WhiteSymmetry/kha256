@@ -7,7 +7,7 @@ This module contains version constants and package metadata used throughout
 the KHA-256 cryptographic hash algorithm implementation.
 """
 
-from typing import Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 # Package version following Semantic Versioning (SemVer)
 # Format: MAJOR.MINOR.PATCH
@@ -111,7 +111,7 @@ __build__: int = 1  # Increment for each build of the same version
 
 def get_version_info() -> Dict[str, str]:
     """Return a dictionary with all version information.
-    
+
     Returns:
         Dict[str, str]: Dictionary containing version metadata.
     """
@@ -127,9 +127,9 @@ def get_version_info() -> Dict[str, str]:
     }
 
 
-def get_dependency_info() -> Dict[str, List[str]]:
+def get_dependency_info() -> Dict[str, Union[List[str], Dict[str, List[str]]]]:
     """Return dependency information.
-    
+
     Returns:
         Dict[str, List[str]]: Dictionary containing dependency information.
     """
@@ -141,24 +141,24 @@ def get_dependency_info() -> Dict[str, List[str]]:
 
 def is_python_version_supported(major: int, minor: int) -> bool:
     """Check if a given Python version is supported.
-    
+
     Args:
         major: Python major version (e.g., 3)
         minor: Python minor version (e.g., 11)
-    
+
     Returns:
         bool: True if the version is supported, False otherwise.
     """
     min_supported = __min_python_version__
     max_supported = __max_python_version__
-    
+
     version = (major, minor)
     return min_supported <= version <= max_supported
 
 
 def get_supported_python_versions() -> List[str]:
     """Get a list of supported Python versions as strings.
-    
+
     Returns:
         List[str]: List of supported Python versions.
     """
@@ -168,39 +168,13 @@ def get_supported_python_versions() -> List[str]:
     return versions
 
 
-# Version history for changelog purposes
-__version_history__: List[Dict[str, str]] = [
-    {
-        "version": "0.2.2",
-        "date": "2025-03-15",
-        "changes": [
-            "Security improvements",
-            "Bug fixes in memory-hard functions",
-            "Performance optimizations",
-        ],
-    },
-    {
-        "version": "0.2.1",
-        "date": "2025-02-01",
-        "changes": [
-            "Added fortified hash modes",
-            "Improved hardware security ID generation",
-        ],
-    },
-    {
-        "version": "0.2.0",
-        "date": "2025-01-15",
-        "changes": [
-            "Major API improvements",
-            "Added memory-hard functions",
-            "Enhanced avalanche effect",
-        ],
-    },
+# Version history for changelog purposes  ← no indent
+__version_history__: List[Dict[str, Union[str, List[str]]]] = [   # ← no indent
     {
         "version": "0.1.0",
-        "date": "2024-12-01",
+        "date": "2024-12-29",
         "changes": [
-            "Initial beta release",
+            "Initial alpha release",
             "Core KHA-256 implementation",
         ],
     },
