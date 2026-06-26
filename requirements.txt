@@ -10,3 +10,6 @@ cryptography
 ipywidgets
 ipython
 scipy
+aiohttp
+python-dotenv
+nest_asyncio
