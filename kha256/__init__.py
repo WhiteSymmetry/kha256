@@ -11,7 +11,7 @@ KEÇECİ HASH ALGORITHM (KEÇECİ HASH ALGORİTMASI), KHA-256
 Security-maximized version with performance trade-offs for maximum security.
 Performanstan fedakarlık edilerek güvenlik maksimize edilmiş versiyondur.
 
-A next-generation cryptographic hash algorithm based on Keçeci Numbers 
+A next-generation cryptographic hash algorithm based on Keçeci Numbers
 and mathematical constants.
 
 :author: Mehmet Keçeci
