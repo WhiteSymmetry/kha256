@@ -19,43 +19,49 @@ and mathematical constants.
 :license: AGPL-3.0-or-later
 :copyright: Copyright 2025-2026 Mehmet Keçeci
 
-# pip install -U bcrypt kececinumbers blake3 pycryptodome xxhash argon2-cffi pandas numpy cryptography ipywidgets ipython scipy
-# conda install -c conda-forge kececinumbers bcrypt blake3 pycryptodome python-xxhash argon2-cffi pandas numpy cryptography pandas ipywidgets ipython scipy
+# pip install -U aiohttp argon2-cffi python-dotenv nest_asyncio bcrypt blake3 kececinumbers pycryptodome xxhash pandas numpy cryptography ipywidgets ipython scipy
+# conda install -c conda-forge aiohttp argon2-cffi python-dotenv nest_asyncio bcrypt blake3 kececinumbers pycryptodome python-xxhash pandas numpy cryptography pandas ipywidgets ipython scipy
 # pip install xxhash: # xxh32 collision riski yüksek (64-bit için ~yüz milyonlarda %0.03)
 
 * 0.3.7. qKHA256: quantum random
+* 0.3.9. mqKHA256: multi-quantum random
 
 """
 
 from __future__ import annotations
 
 import argon2 # pip install argon2-cffi # conda install conda-forge::argon2-cffi
+import asyncio
 import bcrypt
 from blake3 import blake3
 from collections import defaultdict
 from contextlib import contextmanager
-from dataclasses import dataclass
-from datetime import datetime
-from decimal import getcontext
-from functools import lru_cache
-from hmac import compare_digest  # , compare_digicmp
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from Crypto.Cipher import ChaCha20 # pip install -U pycryptodome # conda install conda-forge::pycryptodome
 from Crypto.Hash import SHAKE256
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from dotenv import load_dotenv
+from dataclasses import dataclass
+from datetime import datetime
+from decimal import getcontext
+from functools import lru_cache
 import getpass
 import hashlib
 import hmac
+from hmac import compare_digest  # , compare_digicmp
 from IPython.display import HTML, clear_output, display
 import ipywidgets as widgets
 import json
 import logging
 import math
 import matplotlib.pyplot as plt
+import nest_asyncio
 import numpy as np
 import os
 import pandas as pd
+from pathlib import Path
 import platform
 import random
 import re
@@ -75,7 +81,11 @@ import xxhash
 
 from . import __version__  # paket __init__.py'de tanımlı
 
+# Jupyter Notebook uyumluluğu için
+nest_asyncio.apply()
 
+# .env dosyasını yükle
+load_dotenv()
 
 
 def silent_kn():
@@ -254,11 +264,11 @@ try:
     from . import __version__
 except ImportError:
     # Dosya doğrudan çalıştırıldığında (Örn: python kha256.py) fallback
-    __version__ = "0.3.7"
+    __version__ = "0.3.9"
 
 
 # Version information
-#__version__ = "0.2.9"  # Updated
+#__version__ = "0.3.9"  # Updated
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0-or-later"
 __status__ = "Pre-Production"
@@ -1728,6 +1738,1391 @@ h2 = qhasher.hash("merhaba dünya", quantum=False)
 salt = secrets.token_bytes(32)
 h3 = qhasher.hash("veri", salt=salt, quantum=True)
 assert qhasher.verify("veri", h3, salt, quantum=True)
+
+# ============================================================================
+# YAPILANDIRMA
+# ============================================================================
+
+class QRNGConfig:
+    """Kuantum random API yapılandırması"""
+    
+    # API Önceliği (hız sıralamasına göre)
+    PRIORITY = [
+        "lfd",        # En hızlı (~200-300ms) # Token yok, ID Quantique hardware
+        "qrandom",    # Hızlı (~400-600ms) # Token yok, imzalı sonuçlar
+        "outshift",   # Orta (~600-800ms) # Token gerekli, günlük 100K bit
+        "qci",        # Yavaş (~850-2000ms) # Token gerekli, aylık 1B bit
+        "anu",        # YavAŞ (~1000-1500ms) # Token yok, dakikada 1 istek (eski API) # Token gerekli, aylık 100 istek (yeni API)
+    ]
+    
+    # Rate Limiting (saniye)
+    RATE_LIMITS = {
+        "anu": 60,       # Legacy için dakikada 1
+        "outshift": 1, # Saniyede 1 istek
+        "qci": 1, # Saniyede 1 istek
+    }
+    
+    TIMEOUT = 15
+    CACHE_DURATION = 300
+"""
+class QRNGConfig:
+    #Kuantum random API yapılandırması
+    
+    # API Önceliği (token gerektirmeyenler önce)
+    PRIORITY = [
+        "lfd",              # Token yok, ID Quantique hardware
+        "qrandom",          # Token yok, imzalı sonuçlar
+        "anu_legacy",       # Token yok, dakikada 1 istek (eski API)
+        "outshift",         # Token gerekli, günlük 100K bit
+        "qci",              # Token gerekli, aylık 1B bit
+        "anu_token",        # Token gerekli, aylık 100 istek (yeni API)
+    ]
+    
+    # Rate Limiting (saniye cinsinden)
+    RATE_LIMITS = {
+        "anu_legacy": 60,   # Dakikada 1 istek
+        "anu_token": 1,     # Saniyede 1 istek
+        "outshift": 1,      # Saniyede 1 istek
+        "qci": 1,           # Saniyede 1 istek
+    }
+    
+    # Timeout (saniye)
+    TIMEOUT = 15
+    
+    # Cache süresi (saniye)
+    CACHE_DURATION = 300
+"""
+
+# ============================================================================
+# API SINIFLARI (SENKRON)
+# ============================================================================
+
+class BaseQRNG:
+    """Temel kuantum random API sınıfı"""
+    
+    def __init__(self, name: str, requires_token: bool = False):
+        self.name = name
+        self.requires_token = requires_token
+        self.last_request_time = 0
+        self.request_count = 0
+        self.total_bytes = 0
+    
+    def can_request(self) -> bool:
+        """Rate limit kontrolü"""
+        rate_limit = QRNGConfig.RATE_LIMITS.get(self.name, 0)
+        if rate_limit == 0:
+            return True
+        
+        elapsed = time.time() - self.last_request_time
+        return elapsed >= rate_limit
+    
+    def update_stats(self, bytes_received: int):
+        """İstatistikleri güncelle"""
+        self.last_request_time = time.time()
+        self.request_count += 1
+        self.total_bytes += bytes_received
+    
+    def fetch(self, length: int) -> Optional[bytes]:
+        """API'den random al (subclass'lar implement etmeli)"""
+        raise NotImplementedError
+
+
+class LFDQRNG(BaseQRNG):
+    """LfD QRNG (Almanya) - Token gerektirmez"""
+    
+    def __init__(self):
+        super().__init__("lfd", requires_token=False)
+        self.url = "https://lfdr.de/qrng_api/qrng"
+    
+    def fetch(self, length: int) -> Optional[bytes]:
+        if not self.can_request():
+            return None
+        
+        try:
+            bytes_needed = length * 2
+            params = {"length": bytes_needed, "format": "HEX"}
+            
+            resp = requests.get(self.url, params=params, timeout=QRNGConfig.TIMEOUT)
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                qrn_hex = data.get("qrn", "")
+                
+                if qrn_hex:
+                    raw_bytes = bytes.fromhex(qrn_hex)
+                    self.update_stats(len(raw_bytes))
+                    return raw_bytes[:length]
+            
+            return None
+        except Exception as e:
+            print(f"   ⚠️ LfD hatası: {e}")
+            return None
+
+
+class QRANDOMQRNG(BaseQRNG):
+    """qrandom.io - Token gerektirmez"""
+    
+    def __init__(self):
+        super().__init__("qrandom", requires_token=False)
+        self.url = "https://qrandom.io/api/random/ints"
+    
+    def fetch(self, length: int) -> Optional[bytes]:
+        if not self.can_request():
+            return None
+        
+        try:
+            params = {"min": 0, "max": 65535, "n": length}
+            
+            resp = requests.get(self.url, params=params, timeout=QRNGConfig.TIMEOUT)
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                numbers = data.get("numbers", [])
+                
+                if numbers:
+                    raw_bytes = b''.join(struct.pack('>H', n) for n in numbers[:length])
+                    self.update_stats(len(raw_bytes))
+                    return raw_bytes[:length]
+            
+            return None
+        except Exception as e:
+            print(f"   ⚠️ qrandom hatası: {e}")
+            return None
+
+
+class OutshiftQRNG(BaseQRNG):
+    """Outshift (Cisco) - Token gerekli"""
+    
+    def __init__(self, api_key: str):
+        super().__init__("outshift", requires_token=True)
+        self.api_key = api_key
+        self.url = "https://api.qrng.outshift.com/api/v1/random_numbers"
+    
+    def fetch(self, length: int) -> Optional[bytes]:
+        if not self.can_request() or not self.api_key:
+            return None
+        
+        try:
+            headers = {
+                "Content-Type": "application/json",
+                "x-id-api-key": self.api_key
+            }
+            
+            data = {
+                "encoding": "raw",
+                "format": "all",
+                "bits_per_block": 16,
+                "number_of_blocks": length
+            }
+            
+            resp = requests.post(self.url, headers=headers, json=data, timeout=QRNGConfig.TIMEOUT)
+            
+            if resp.status_code == 200:
+                result = resp.json()
+                numbers = []
+                
+                if "random_numbers" in result:
+                    for item in result["random_numbers"]:
+                        if isinstance(item, dict) and "decimal" in item:
+                            try:
+                                numbers.append(int(item["decimal"]))
+                            except (ValueError, TypeError):
+                                continue
+                
+                if numbers:
+                    raw_bytes = b''.join(struct.pack('>H', n) for n in numbers[:length])
+                    self.update_stats(len(raw_bytes))
+                    return raw_bytes[:length]
+            
+            return None
+        except Exception as e:
+            print(f"   ⚠️ Outshift hatası: {e}")
+            return None
+
+
+class QCIQRNG(BaseQRNG):
+    """QCI (Quantum Computing Inc) - Token gerekli, 2 aşamalı auth"""
+    
+    def __init__(self, refresh_token: str):
+        super().__init__("qci", requires_token=True)
+        self.refresh_token = refresh_token
+        self.access_token = None
+        self.base_url = "https://api.qci-prod.com"
+    
+    def _get_access_token(self) -> bool:
+        """Access token al"""
+        try:
+            headers = {
+                "accept": "application/json",
+                "Content-Type": "application/json"
+            }
+            
+            data = {"refresh_token": self.refresh_token}
+            
+            resp = requests.post(
+                f"{self.base_url}/auth/v1/access-tokens",
+                headers=headers,
+                json=data,
+                timeout=QRNGConfig.TIMEOUT
+            )
+            
+            if resp.status_code == 200:
+                result = resp.json()
+                self.access_token = result.get("access_token")
+                return True
+            
+            return False
+        except Exception as e:
+            print(f"   ⚠️ QCI auth hatası: {e}")
+            return False
+    
+    def fetch(self, length: int) -> Optional[bytes]:
+        if not self.can_request() or not self.refresh_token:
+            return None
+        
+        # Access token yoksa al
+        if not self.access_token:
+            if not self._get_access_token():
+                return None
+        
+        try:
+            headers = {
+                "accept": "application/json",
+                "Authorization": f"Bearer {self.access_token}",
+                "Content-Type": "application/json"
+            }
+            
+            data = {
+                "distribution": "uniform_discrete",
+                "output_type": "decimal",
+                "n_samples": length,
+                "n_bits": 16
+            }
+            
+            resp = requests.post(
+                f"{self.base_url}/qrng/random_numbers",
+                headers=headers,
+                json=data,
+                timeout=QRNGConfig.TIMEOUT
+            )
+            
+            if resp.status_code == 200:
+                result = resp.json()
+                
+                # Response doğrudan liste olabilir
+                if isinstance(result, list):
+                    numbers = [int(x) for x in result if isinstance(x, (int, float))]
+                elif isinstance(result, dict):
+                    numbers = []
+                    for key in ["data", "random_numbers", "numbers"]:
+                        if key in result:
+                            val = result[key]
+                            if isinstance(val, list):
+                                numbers = [int(x) for x in val if isinstance(x, (int, float))]
+                                break
+                
+                if numbers:
+                    raw_bytes = b''.join(struct.pack('>H', n) for n in numbers[:length])
+                    self.update_stats(len(raw_bytes))
+                    return raw_bytes[:length]
+            
+            elif resp.status_code == 401:
+                # Token süresi dolmuş
+                self.access_token = None
+            
+            return None
+        except Exception as e:
+            print(f"   ⚠️ QCI hatası: {e}")
+            return None
+
+
+class ANULegacyQRNG(BaseQRNG):
+    """ANU QRNG (Eski jsonI API) - Token gerektirmez, dakikada 1 istek"""
+    
+    def __init__(self):
+        super().__init__("anu_legacy", requires_token=False)
+        self.url = "https://qrng.anu.edu.au/API/jsonI.php"
+    
+    def fetch(self, length: int, debug: bool = False) -> Optional[bytes]:
+        if not self.can_request():
+            return None
+        
+        try:
+            chunk = min(1024, length)
+            params = {"length": chunk, "type": "uint16"}
+            
+            resp = requests.get(self.url, params=params, timeout=QRNGConfig.TIMEOUT)
+            
+            if debug:
+                print(f"   🐛 ANU_LEGACY Status: {resp.status_code}")
+                print(f"   🐛 ANU_LEGACY Response: {resp.text[:200]}")
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                
+                # Response formatını debug et
+                if debug:
+                    print(f"   🐛 ANU_LEGACY Keys: {list(data.keys())}")
+                    print(f"   🐛 ANU_LEGACY Success: {data.get('success')}")
+                    print(f"   🐛 ANU_LEGACY Length: {data.get('length')}")
+                
+                # ANU Legacy API bazen "success": false dönüyor
+                if data.get("success") == False:
+                    if debug:
+                        print(f"   ⚠️ ANU_LEGACY API başarısız döndü: {data.get('message', 'Unknown')}")
+                    return None
+                
+                numbers = data.get("data", [])
+                
+                if not numbers:
+                    if debug:
+                        print(f"   ⚠️ ANU_LEGACY boş data döndü")
+                    return None
+                
+                raw_bytes = b''.join(struct.pack('>H', n) for n in numbers[:chunk])
+                self.update_stats(len(raw_bytes))
+                return raw_bytes[:length]
+            
+            return None
+        except Exception as e:
+            if debug:
+                print(f"   ⚠️ ANU_LEGACY hatası: {e}")
+            return None
+
+
+class ANUTokenQRNG(BaseQRNG):
+    """ANU QRNG (Yeni Token'lı API) - Aylık 100 istek"""
+    
+    def __init__(self, api_token: str):
+        super().__init__("anu_token", requires_token=True)
+        self.api_token = api_token
+        self.url = "https://api.quantumnumbers.anu.edu.au"
+        self.limit_exceeded = False  # ← EKLENDİ
+        self.limit_exceeded_time = None
+    
+    def fetch(self, length: int, debug: bool = False) -> Optional[bytes]:
+        if not self.can_request() or not self.api_token:
+            return None
+        
+        # Limit aşımı kontrolü (24 saat boyunca tekrar deneme)
+        if self.limit_exceeded:
+            if self.limit_exceeded_time and (time.time() - self.limit_exceeded_time) < 86400:
+                if debug:
+                    print(f"   ⚠️ ANU_TOKEN limit aşımı aktif, 24 saat boyunca denenmeyecek")
+                return None
+            else:
+                # 24 saat geçti, tekrar dene
+                self.limit_exceeded = False
+                if debug:
+                    print(f"   🔄 ANU_TOKEN limit aşımı sıfırlandı, tekrar deneniyor")
+        
+        try:
+            chunk = min(1024, length)
+            params = {"length": chunk, "type": "uint16"}
+            headers = {"x-api-key": self.api_token}
+            
+            resp = requests.get(self.url, params=params, headers=headers, timeout=QRNGConfig.TIMEOUT)
+            
+            if debug:
+                print(f"   🐛 ANU_TOKEN Status: {resp.status_code}")
+            
+            # 429 - Limit Exceeded
+            if resp.status_code == 429:
+                self.limit_exceeded = True
+                self.limit_exceeded_time = time.time()
+                if debug:
+                    print(f"   ⚠️ ANU_TOKEN aylık limit aşıldı! 24 saat boyunca denenmeyecek.")
+                    print(f"   📅 Bir sonraki ayın başında (1 Temmuz 2026) sıfırlanacak.")
+                return None
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                
+                numbers = []
+                if isinstance(data, dict):
+                    if "data" in data:
+                        numbers = data.get("data", [])
+                    elif "randomData" in data:
+                        numbers = data.get("randomData", [])
+                    elif "numbers" in data:
+                        numbers = data.get("numbers", [])
+                elif isinstance(data, list):
+                    numbers = data
+                
+                if numbers:
+                    int_numbers = [int(n) for n in numbers[:chunk]]
+                    raw_bytes = b''.join(struct.pack('>H', n) for n in int_numbers)
+                    self.update_stats(len(raw_bytes))
+                    return raw_bytes[:length]
+            
+            return None
+        except Exception as e:
+            if debug:
+                print(f"   ⚠️ ANU_TOKEN hatası: {e}")
+            return None
+
+class ANUQRNG(BaseQRNG):
+    """
+    ANU QRNG - Tek API, otomatik token yönetimi
+    Token varsa yeni API'yi, yoksa legacy API'yi kullanır.
+    """
+    
+    def __init__(self, api_token: str = None):
+        super().__init__("anu", requires_token=bool(api_token))
+        self.api_token = api_token
+        self.legacy_url = "https://qrng.anu.edu.au/API/jsonI.php"
+        self.token_url = "https://api.quantumnumbers.anu.edu.au"
+        self.limit_exceeded = False
+        self.limit_exceeded_time = None
+    
+    def fetch(self, length: int, debug: bool = False) -> Optional[bytes]:
+        if not self.can_request():
+            if debug:
+                elapsed = time.time() - self.last_request_time
+                rate_limit = QRNGConfig.RATE_LIMITS.get("anu", 0)
+                print(f"   ⏳ ANU rate limit: {rate_limit - elapsed:.1f}s beklenmeli")
+            return None
+        
+        # Token varsa yeni API'yi dene
+        if self.api_token:
+            result = self._fetch_with_token(length, debug)
+            if result:
+                return result
+            # Token'lı API başarısızsa legacy'ye düş
+            if debug:
+                print(f"   🔄 ANU token'lı API başarısız, legacy'ye geçiliyor")
+        
+        # Legacy API'yi dene
+        return self._fetch_legacy(length, debug)
+    
+    def _fetch_with_token(self, length: int, debug: bool = False) -> Optional[bytes]:
+        """Token'lı ANU API"""
+        # Limit aşımı kontrolü (24 saat)
+        if self.limit_exceeded:
+            if self.limit_exceeded_time and (time.time() - self.limit_exceeded_time) < 86400:
+                if debug:
+                    print(f"   ⚠️ ANU aylık limit aşıldı, 24 saat bekleniyor")
+                return None
+            else:
+                self.limit_exceeded = False
+        
+        try:
+            chunk = min(1024, length)
+            params = {"length": chunk, "type": "uint16"}
+            headers = {"x-api-key": self.api_token}
+            
+            resp = requests.get(self.token_url, params=params, headers=headers, timeout=QRNGConfig.TIMEOUT)
+            
+            if debug:
+                print(f"   🐛 ANU Token Status: {resp.status_code}")
+            
+            if resp.status_code == 429:
+                self.limit_exceeded = True
+                self.limit_exceeded_time = time.time()
+                if debug:
+                    print(f"   ⚠️ ANU aylık limit aşıldı!")
+                return None
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                numbers = []
+                
+                if isinstance(data, dict):
+                    for key in ["data", "randomData", "numbers"]:
+                        if key in data:
+                            numbers = data[key]
+                            break
+                elif isinstance(data, list):
+                    numbers = data
+                
+                if numbers:
+                    int_numbers = [int(n) for n in numbers[:chunk]]
+                    raw_bytes = b''.join(struct.pack('>H', n) for n in int_numbers)
+                    self.update_stats(len(raw_bytes))
+                    return raw_bytes[:length]
+            
+            return None
+        except Exception as e:
+            if debug:
+                print(f"   ⚠️ ANU Token hatası: {e}")
+            return None
+    
+    def _fetch_legacy(self, length: int, debug: bool = False) -> Optional[bytes]:
+        """Legacy ANU API (token gerektirmez)"""
+        try:
+            chunk = min(1024, length)
+            params = {"length": chunk, "type": "uint16"}
+            
+            resp = requests.get(self.legacy_url, params=params, timeout=QRNGConfig.TIMEOUT)
+            
+            if debug:
+                print(f"   🐛 ANU Legacy Status: {resp.status_code}")
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                
+                if data.get("success") == False:
+                    if debug:
+                        print(f"   ⚠️ ANU Legacy API başarısız")
+                    return None
+                
+                numbers = data.get("data", [])
+                
+                if numbers:
+                    raw_bytes = b''.join(struct.pack('>H', n) for n in numbers[:chunk])
+                    self.update_stats(len(raw_bytes))
+                    return raw_bytes[:length]
+            
+            return None
+        except Exception as e:
+            if debug:
+                print(f"   ⚠️ ANU Legacy hatası: {e}")
+            return None
+
+
+# ============================================================================
+# HYBRID MANAGER (SENKRON RACE CONDITION)
+# ============================================================================
+
+class HybridQRNGManager:
+    """Çoklu kuantum API yöneticisi"""
+    
+    def __init__(self):
+        self.apis: Dict[str, BaseQRNG] = {}
+        self._init_apis()
+        self.cache: Dict[int, Tuple[bytes, str, float]] = {}
+        self.response_times: Dict[str, List[float]] = {}  # ← Hız takibi
+    
+    def _init_apis(self):
+        """API'leri başlat"""
+        # Token gerektirmeyenler
+        self.apis["lfd"] = LFDQRNG()
+        self.apis["qrandom"] = QRANDOMQRNG()
+        
+        # ANU - tek API, otomatik token yönetimi
+        anu_token = os.getenv("ANU_API_TOKEN", "").strip()
+        self.apis["anu"] = ANUQRNG(api_token=anu_token if anu_token else None)
+        
+        # Token gerektirenler
+        outshift_key = os.getenv("OUTSHIFT_API_KEY", "").strip()
+        if outshift_key:
+            self.apis["outshift"] = OutshiftQRNG(outshift_key)
+        
+        qci_token = os.getenv("QCI_API_TOKEN", "").strip()
+        if qci_token:
+            self.apis["qci"] = QCIQRNG(qci_token)
+
+    def _fetch_from_api(self, api_name: str, length: int) -> Tuple[Optional[bytes], str]:
+        """Belirli bir API'den random al"""
+        if api_name not in self.apis:
+            return None, api_name
+        
+        api = self.apis[api_name]
+        result = api.fetch(length)
+        
+        if result:
+            return result, api_name
+        
+        return None, api_name
+    
+    def get_quantum_bytes(self, length: int, verbose: bool = False) -> Tuple[bytes, str]:
+        """Kuantum random al (race condition + hız takibi)"""
+        # Cache kontrolü
+        if length in self.cache:
+            cached_bytes, cached_source, cached_time = self.cache[length]
+            if time.time() - cached_time < QRNGConfig.CACHE_DURATION:
+                if verbose:
+                    print(f"   ✅ Cache'den {length} byte alındı (kaynak: {cached_source})")
+                return cached_bytes, cached_source
+        
+        # Kullanılabilir API'leri belirle
+        available_apis = []
+        for api_name in QRNGConfig.PRIORITY:
+            if api_name in self.apis:
+                api = self.apis[api_name]
+                if api.can_request():
+                    available_apis.append(api_name)
+                elif verbose:
+                    print(f"   ⏭️  {api_name}: rate limit aktif, atlandı")
+        
+        if not available_apis:
+            if verbose:
+                print("   ⚠️ Hiçbir API kullanılamıyor, fallback'e geçiliyor")
+            return secrets.token_bytes(length), "fallback"
+        
+        if verbose:
+            print(f"   🔄 {len(available_apis)} API yarışıyor: {', '.join(available_apis)}")
+        
+        # Race condition: ThreadPoolExecutor ile paralel çağır
+        with ThreadPoolExecutor(max_workers=len(available_apis)) as executor:
+            futures = {}
+            for api_name in available_apis:
+                start_time = time.perf_counter()
+                future = executor.submit(self._fetch_from_api, api_name, length)
+                futures[future] = (api_name, start_time)
+            
+            # İlk başarılı sonucu bekle
+            for future in as_completed(futures):
+                api_name, start_time = futures[future]
+                result, source = future.result()
+                elapsed_ms = (time.perf_counter() - start_time) * 1000
+                
+                # Hız takibi
+                if api_name not in self.response_times:
+                    self.response_times[api_name] = []
+                self.response_times[api_name].append(elapsed_ms)
+                
+                if result and len(result) >= length:
+                    self.cache[length] = (result[:length], source, time.time())
+                    
+                    if verbose:
+                        print(f"   ✅ {source} API kazandı! {len(result)} byte ({elapsed_ms:.0f}ms)")
+                    
+                    # Diğer future'ları iptal et
+                    for f in futures:
+                        f.cancel()
+                    
+                    return result[:length], source
+        
+        if verbose:
+            print("   ⚠️ Tüm API'ler başarısız, fallback'e geçiliyor")
+        return secrets.token_bytes(length), "fallback"
+
+
+    def get_speed_stats(self) -> Dict[str, Dict[str, float]]:
+        """
+        API hız istatistiklerini döndür.
+        
+        Returns:
+            Dict: Her API için avg_ms, min_ms, max_ms, count
+        """
+        stats = {}
+        for api_name, times in self.response_times.items():
+            if times:
+                stats[api_name] = {
+                    "avg_ms": sum(times) / len(times),
+                    "min_ms": min(times),
+                    "max_ms": max(times),
+                    "count": len(times)
+                }
+        return stats
+
+    def get_stats(self) -> Dict[str, Any]:
+        """API istatistiklerini döndür"""
+        stats = {}
+        for name, api in self.apis.items():
+            stats[name] = {
+                "requires_token": api.requires_token,
+                "request_count": api.request_count,
+                "total_bytes": api.total_bytes,
+                "last_request": api.last_request_time
+            }
+        return stats
+    
+    def get_dynamic_priority(self) -> List[str]:
+        """
+        En hızlı API'leri otomatik sırala (ortalama response süresine göre).
+        
+        Returns:
+            List[str]: API isimleri, en hızlıdan en yavaşa
+        """
+        speed_stats = self.get_speed_stats()
+        
+        # Eğer hiç veri yoksa, varsayılan önceliği döndür
+        if not speed_stats:
+            return QRNGConfig.PRIORITY.copy()
+        
+        # Ortalama süreye göre sırala
+        sorted_apis = sorted(
+            speed_stats.items(),
+            key=lambda x: x[1]['avg_ms']
+        )
+        
+        # Sadece API isimlerini döndür
+        return [api for api, _ in sorted_apis]
+    
+    def health_check(self) -> Dict[str, bool]:
+        """
+        Tüm API'lerin sağlık durumunu kontrol et.
+        
+        Returns:
+            Dict[str, bool]: Her API için True/False
+        """
+        health = {}
+        
+        for api_name, api in self.apis.items():
+            try:
+                # Rate limit kontrolü
+                if not api.can_request():
+                    health[api_name] = False
+                    continue
+                
+                # Küçük bir test yap (16 byte)
+                result = api.fetch(16)
+                health[api_name] = result is not None and len(result) >= 16
+            except Exception as e:
+                health[api_name] = False
+        
+        return health
+    
+    def get_dashboard(self) -> str:
+        """
+        API kullanım dashboard'u oluştur.
+        
+        Returns:
+            str: Format edilmiş dashboard
+        """
+        stats = self.get_stats()
+        speed = self.get_speed_stats()
+        health = self.health_check()
+        
+        lines = ["=" * 80, "📊 KUANTUM RANDOM DASHBOARD", "=" * 80]
+        
+        for api_name in QRNGConfig.PRIORITY:
+            if api_name not in stats:
+                continue
+            
+            s = stats[api_name]
+            sp = speed.get(api_name, {})
+            is_healthy = health.get(api_name, False)
+            
+            # Durum ikonu
+            status_icon = "✅" if is_healthy else "❌"
+            
+            lines.append(f"\n{status_icon} {api_name.upper()}")
+            lines.append(f"   İstek: {s['request_count']}")
+            lines.append(f"   Byte: {s['total_bytes']}")
+            
+            if sp:
+                lines.append(f"   Hız: {sp['avg_ms']:.0f}ms (min: {sp['min_ms']:.0f}ms, max: {sp['max_ms']:.0f}ms)")
+            else:
+                lines.append(f"   Hız: Veri yok")
+            
+            lines.append(f"   Token: {'🔑' if s['requires_token'] else '🌐'}")
+            
+            # Rate limit durumu
+            api = self.apis[api_name]
+            if api.can_request():
+                lines.append(f"   Rate Limit: ✅ Hazır")
+            else:
+                elapsed = time.time() - api.last_request_time
+                rate_limit = QRNGConfig.RATE_LIMITS.get(api_name, 0)
+                wait_time = rate_limit - elapsed
+                lines.append(f"   Rate Limit: ⏳ {wait_time:.1f}s beklenmeli")
+        
+        # Özet
+        healthy_count = sum(1 for v in health.values() if v)
+        total_count = len(health)
+        lines.append("\n" + "-" * 80)
+        lines.append(f"🎯 Sağlıklı API: {healthy_count}/{total_count}")
+        
+        if speed:
+            avg_speed = sum(s['avg_ms'] for s in speed.values()) / len(speed)
+            lines.append(f"⚡ Ortalama Hız: {avg_speed:.0f}ms")
+        
+        lines.append("=" * 80)
+        return "\n".join(lines)
+    
+    def reset_stats(self):
+        """Tüm istatistikleri sıfırla"""
+        for api in self.apis.values():
+            api.request_count = 0
+            api.total_bytes = 0
+            api.last_request_time = 0
+        
+        self.response_times.clear()
+        self.cache.clear()
+        print("🗑️ Tüm istatistikler sıfırlandı")
+
+
+# ============================================================================
+# GLOBAL INSTANCE
+# ============================================================================
+
+# Global manager instance
+_qrng_manager = HybridQRNGManager()
+
+
+# ============================================================================
+# PUBLIC API
+# ============================================================================
+
+def get_mquantum_bytes(length: int, verbose: bool = False) -> Tuple[bytes, str]:
+    """
+    Çoklu kuantum API'lerinden random bytes al.
+    
+    Args:
+        length: İstenen byte sayısı
+        verbose: Detaylı log çıktısı
+    
+    Returns:
+        Tuple[bytes, str]: (random_bytes, source_api_name)
+    
+    Örnek:
+        >>> salt, source = get_mquantum_bytes(32, verbose=True)
+        >>> print(f"Salt: {salt.hex()}, Kaynak: {source}")
+    """
+    return _qrng_manager.get_quantum_bytes(length, verbose)
+
+
+def get_quantum_stats() -> Dict[str, Any]:
+    """API kullanım istatistiklerini döndür"""
+    return _qrng_manager.get_stats()
+
+class mqKHA256:
+    """
+    mqKHA-256 - Multi-Quantum KHA-256
+    ==========================================
+    ✓ Hiçbir standart hash'ten kod alınmamıştır
+    ✓ Tüm sabitler matematiksel irrasyonellerden üretilmiştir
+    ✓ Perfect avalanche hedefi: 128.00/128.00
+    ✓ HMAC desteği
+    ✓ Real multi-quantum random (4+ API)
+    ==========================================
+    """
+
+    __slots__ = ("_salt_length", "_metrics", "_version")
+
+    def __init__(self):
+        self._salt_length = 32
+        self._metrics = {"hash_count": 0, "total_time_ms": 0.0, "memory_hard_count": 0}
+        self._version = __version__
+
+    def _generate_salt(self, quantum: bool = True, verbose: bool = False) -> bytes:
+        """Kuantum (varsa) ya da sistem random ile salt üret."""
+        if quantum:
+            salt_bytes, source = get_mquantum_bytes(self._salt_length, verbose=verbose)
+            if verbose:
+                print(f"   📦 Salt kaynağı: {source}")
+            return salt_bytes
+        return secrets.token_bytes(self._salt_length)
+
+    def hash(
+        self,
+        data: Union[str, bytes],
+        salt: Optional[bytes] = None,
+        *,
+        deterministic: bool = False,
+        memory_hard: bool = False,
+        memory_mb: int = 1,
+        quantum: bool = True,
+        verbose: bool = False
+    ) -> str:
+        start = time.perf_counter()
+        data_bytes = data.encode("utf-8") if isinstance(data, str) else data
+
+        if deterministic:
+            if salt is None:
+                raise ValueError("Deterministic modda salt gerekli!")
+            result = DeterministicHash.hash(data_bytes + salt).hex()
+            self._update_metrics(start)
+            return result
+
+        if memory_hard:
+            if salt is None:
+                salt = self._generate_salt(quantum=quantum, verbose=verbose)
+            result = MemoryHardHash(memory_mb).hash(data_bytes, salt)
+            self._update_metrics(start)
+            self._metrics["memory_hard_count"] += 1
+            return result
+
+        if salt is None:
+            salt = self._generate_salt(quantum=quantum, verbose=verbose)
+
+        # Pre-processing
+        prepared = bytearray(data_bytes)
+        for i in range(len(prepared)):
+            prepared[i] ^= salt[i % len(salt)]
+            prepared[i] = KHAUtils.rotl8(prepared[i], ROT_PRE)
+            prepared[i] ^= (i * int(PI)) & 0xFF
+
+        result = CoreHash.hash(bytes(prepared), salt)
+
+        final = bytearray(result)
+        for i in range(len(final)):
+            final[i] ^= salt[i % len(salt)]
+            final[i] ^= data_bytes[i % len(data_bytes)]
+            final[i] = KHAUtils.rotl8(final[i], ROT_POST)
+            final[i] ^= TransformFunctions.chaos(i) & 0xFF
+
+        self._update_metrics(start)
+        return bytes(final).hex()
+
+    def hmac(self, key: bytes, message: Union[str, bytes]) -> str:
+        """KHA-256 HMAC"""
+        msg_bytes = message.encode("utf-8") if isinstance(message, str) else message
+
+        if len(key) > 64:
+            key = DeterministicHash.hash(key)
+        if len(key) < 64:
+            key = key + b"\x00" * (64 - len(key))
+
+        o_key_pad = bytes(x ^ 0x5C for x in key[:64])
+        i_key_pad = bytes(x ^ 0x36 for x in key[:64])
+
+        inner_hash = self.hash(i_key_pad + msg_bytes, b"", deterministic=True)
+        outer_hash = self.hash(
+            o_key_pad + bytes.fromhex(inner_hash), b"", deterministic=True
+        )
+
+        return outer_hash
+
+    def verify(
+        self, data: Union[str, bytes], hash_str: str, salt: bytes, **kwargs
+    ) -> bool:
+        """Hash doğrulama"""
+        computed = self.hash(data, salt, **kwargs)
+        return compare_digest(computed.encode(), hash_str.encode())
+
+    def _update_metrics(self, start: float):
+        elapsed = (time.perf_counter() - start) * 1000
+        self._metrics["hash_count"] += 1
+        self._metrics["total_time_ms"] += elapsed
+
+    @property
+    def version(self) -> str:
+        return self._version
+
+    @property
+    def metrics(self) -> Dict[str, Any]:
+        return self._metrics.copy()
+
+
+# ============================================================================
+# TEST FONKSİYONLARI
+# ============================================================================
+
+def test_all_quantum_apis(length: int = 32, verbose: bool = True, debug: bool = False) -> Dict[str, Any]:
+    """
+    Tüm kuantum API'leri tek tek test eder.
+    
+    Args:
+        length: Test için istenecek byte sayısı
+        verbose: Detaylı çıktı göster
+        debug: API response'larını göster (sorun giderme için)
+    
+    Returns:
+        Dict: Her API için test sonuçları
+    """
+    manager = _qrng_manager
+    
+    results = {}
+    
+    if verbose:
+        print("=" * 80)
+        print("🧪 TÜM KUANTUM API'LERİ TEST EDİLİYOR")
+        print("=" * 80)
+        print(f"📏 Test boyutu: {length} byte ({length * 8} bit)")
+        print(f"🔢 Test edilecek API sayısı: {len(manager.apis)}")
+        if debug:
+            print(f"🐛 DEBUG MODU AKTİF")
+        print()
+    
+    manager.cache.clear()
+    
+    for api_name in QRNGConfig.PRIORITY:
+        if api_name not in manager.apis:
+            if verbose:
+                print(f"⏭️  {api_name:15} | Token yok, ATLANDI")
+            results[api_name] = {
+                "status": "skipped",
+                "reason": "Token not configured",
+                "data": None,
+                "bytes": 0,
+                "time_ms": 0
+            }
+            continue
+        
+        api = manager.apis[api_name]
+        
+        if verbose:
+            token_status = "🔑" if api.requires_token else "🌐"
+            print(f"🔬 {token_status} {api_name.upper()} test ediliyor...")
+        
+        if not api.can_request():
+            if verbose:
+                elapsed = time.time() - api.last_request_time
+                rate_limit = QRNGConfig.RATE_LIMITS.get(api_name, 0)
+                wait_time = rate_limit - elapsed
+                print(f"   ⏳ Rate limit aktif ({wait_time:.1f}s beklenmeli)")
+            results[api_name] = {
+                "status": "rate_limited",
+                "reason": f"Rate limit active (wait {rate_limit - elapsed:.1f}s)",
+                "data": None,
+                "bytes": 0,
+                "time_ms": 0
+            }
+            continue
+        
+        start_time = time.perf_counter()
+        try:
+            # Debug parametresini geçir
+            data = api.fetch(length, debug=debug) if hasattr(api.fetch, '__code__') and 'debug' in api.fetch.__code__.co_varnames else api.fetch(length)
+            elapsed_ms = (time.perf_counter() - start_time) * 1000
+            
+            if data and len(data) >= length:
+                result_data = data[:length]
+                if verbose:
+                    print(f"   ✅ BAŞARILI! {len(result_data)} byte alındı ({elapsed_ms:.0f}ms)")
+                    print(f"   📊 Örnek: {result_data[:16].hex()}...")
+                results[api_name] = {
+                    "status": "success",
+                    "reason": "OK",
+                    "data": result_data,
+                    "bytes": len(result_data),
+                    "time_ms": elapsed_ms
+                }
+            else:
+                if verbose:
+                    print(f"   ❌ BAŞARISIZ (boş veya yetersiz veri)")
+                results[api_name] = {
+                    "status": "failed",
+                    "reason": "Empty or insufficient data",
+                    "data": None,
+                    "bytes": 0,
+                    "time_ms": elapsed_ms
+                }
+        except Exception as e:
+            elapsed_ms = (time.perf_counter() - start_time) * 1000
+            if verbose:
+                print(f"   ❌ HATA: {e}")
+            results[api_name] = {
+                "status": "error",
+                "reason": str(e),
+                "data": None,
+                "bytes": 0,
+                "time_ms": elapsed_ms
+            }
+        
+        if verbose:
+            print()
+    
+    if verbose:
+        print("=" * 80)
+        print("📊 TEST SONUÇLARI ÖZETİ")
+        print("=" * 80)
+        print(f"{'API':<15} {'Durum':<12} {'Token':<8} {'Boyut':<10} {'Süre':<10} {'Not'}")
+        print("-" * 80)
+        
+        success_count = 0
+        total_count = 0
+        
+        for api_name in QRNGConfig.PRIORITY:
+            if api_name not in results:
+                continue
+            
+            total_count += 1
+            r = results[api_name]
+            
+            if r["status"] == "success":
+                icon = "✅ BAŞARILI"
+                success_count += 1
+            elif r["status"] == "skipped":
+                icon = "⏭️  ATLANDI"
+            elif r["status"] == "rate_limited":
+                icon = "⏳ LİMİT"
+            elif r["status"] == "failed":
+                icon = "❌ BAŞARISIZ"
+            else:
+                icon = "💥 HATA"
+            
+            token_icon = "🔑" if manager.apis.get(api_name, BaseQRNG(api_name)).requires_token else "🌐"
+            size_str = f"{r['bytes']} B" if r['bytes'] > 0 else "-"
+            time_str = f"{r['time_ms']:.0f} ms" if r['time_ms'] > 0 else "-"
+            note = r["reason"] if r["status"] != "success" else ""
+            
+            print(f"{api_name:<15} {icon:<12} {token_icon:<8} {size_str:<10} {time_str:<10} {note}")
+        
+        print("-" * 80)
+        print(f"🎯 Başarı Oranı: {success_count}/{total_count} ({success_count/total_count*100:.1f}%)")
+        
+        if success_count == 0:
+            print("⚠️  HİÇBİR API ÇALIŞMIYOR! Token'ları kontrol edin.")
+        elif success_count == total_count:
+            print("🎉 TÜM API'LER ÇALIŞIYOR! Mükemmel!")
+        else:
+            print(f"ℹ️  {success_count} API çalışıyor, {total_count - success_count} API sorunlu.")
+        
+        print("=" * 80)
+    
+    return results
+
+
+def test_quantum_quality(num_samples: int = 1000, api_name: str = None) -> Dict[str, Any]:
+    """
+    Kuantum random kalitesini test eder (istatistiksel analiz).
+    
+    Args:
+        num_samples: Test edilecek uint16 sayısı
+        api_name: Belirli bir API'yi test et (None ise tüm API'leri dener)
+    
+    Returns:
+        Dict: İstatistiksel analiz sonuçları
+    """
+    from collections import Counter
+    import numpy as np
+    
+    manager = _qrng_manager
+    results = {}
+    
+    # Test edilecek API'leri belirle
+    if api_name:
+        apis_to_test = [api_name] if api_name in manager.apis else []
+    else:
+        apis_to_test = [name for name in QRNGConfig.PRIORITY if name in manager.apis]
+    
+    print("=" * 80)
+    print(f"📈 KUANTUM RANDOM KALİTE TESTİ ({num_samples} örnek)")
+    print("=" * 80)
+    
+    for name in apis_to_test:
+        api = manager.apis[name]
+        
+        if not api.can_request():
+            print(f"\n⏭️  {name}: Rate limit aktif, atlandı")
+            continue
+        
+        print(f"\n🔬 {name.upper()} API Kalite Testi:")
+        
+        # Veri topla (parça parça)
+        all_numbers = []
+        chunk_size = min(1000, num_samples)
+        
+        for _ in range(0, num_samples, chunk_size):
+            current_chunk = min(chunk_size, num_samples - len(all_numbers))
+            data = api.fetch(current_chunk * 2)  # uint16 için 2 byte
+            
+            if data:
+                # Bytes'ı uint16'a çevir
+                for i in range(0, len(data) - 1, 2):
+                    num = struct.unpack('>H', data[i:i+2])[0]
+                    all_numbers.append(num)
+            
+            if len(all_numbers) >= num_samples:
+                break
+        
+        if len(all_numbers) < 100:
+            print(f"   ❌ Yetersiz veri ({len(all_numbers)} örnek)")
+            continue
+        
+        all_numbers = all_numbers[:num_samples]
+        
+        # İstatistiksel analiz
+        freq = Counter(all_numbers)
+        unique_ratio = len(freq) / len(all_numbers)
+        
+        # Bit dağılımı
+        all_bits = []
+        for n in all_numbers:
+            bits = bin(n)[2:].zfill(16)
+            all_bits.extend([int(b) for b in bits])
+        
+        bit_counts = Counter(all_bits)
+        zero_ratio = bit_counts[0] / len(all_bits)
+        
+        # Ortalama ve std sapma
+        mean_val = np.mean(all_numbers)
+        std_val = np.std(all_numbers)
+        
+        results[name] = {
+            "samples": len(all_numbers),
+            "unique_ratio": unique_ratio,
+            "zero_ratio": zero_ratio,
+            "mean": float(mean_val),
+            "std": float(std_val),
+            "ideal_mean": 32767.5,
+            "ideal_std": 18918.3
+        }
+        
+        print(f"   ✅ {len(all_numbers)} örnek toplandı")
+        print(f"   📊 Benzersizlik: {unique_ratio*100:.2f}%")
+        print(f"   📊 0-bit oranı: {zero_ratio*100:.2f}% (ideal: 50.00%)")
+        print(f"   📊 Ortalama: {mean_val:.2f} (ideal: 32767.5)")
+        print(f"   📊 Std Sapma: {std_val:.2f} (ideal: 18918.3)")
+    
+    print("\n" + "=" * 80)
+    return results
+
+
+def diagnose_quantum_apis() -> Dict[str, Any]:
+    """
+    Tüm API'leri detaylı şekilde teşhis eder.
+    Hataları, response formatlarını ve olası çözümleri gösterir.
+    """
+    manager = _qrng_manager
+    diagnosis = {}
+    
+    print("=" * 80)
+    print("🔍 KUANTUM API TEŞHİS RAPORU")
+    print("=" * 80)
+    
+    for api_name in QRNGConfig.PRIORITY:
+        print(f"\n🔬 {api_name.upper()}")
+        print("-" * 80)
+        
+        if api_name not in manager.apis:
+            print("   ⚠️  API yapılandırılmamış")
+            diagnosis[api_name] = {
+                "configured": False,
+                "issue": "Token not provided in .env",
+                "solution": f"Add {api_name.upper()}_API_KEY or {api_name.upper()}_API_TOKEN to .env"
+            }
+            continue
+        
+        api = manager.apis[api_name]
+        
+        # Temel bilgiler
+        print(f"   URL: {getattr(api, 'url', getattr(api, 'base_url', 'N/A'))}")
+        print(f"   Token Required: {'Yes' if api.requires_token else 'No'}")
+        
+        if api.requires_token:
+            token = getattr(api, 'api_key', None) or getattr(api, 'refresh_token', None) or getattr(api, 'api_token', None)
+            if token:
+                print(f"   Token: {token[:10]}...{token[-4:]} ({len(token)} chars)")
+            else:
+                print(f"   Token: ❌ MISSING")
+        
+        print(f"   Rate Limit: {QRNGConfig.RATE_LIMITS.get(api_name, 'None')}s")
+        print(f"   Total Requests: {api.request_count}")
+        print(f"   Total Bytes: {api.total_bytes}")
+        
+        # Canlı test
+        print(f"\n   🧪 Canlı Test:")
+        try:
+            data = api.fetch(16)
+            if data and len(data) >= 16:
+                print(f"   ✅ Başarılı! {len(data)} byte")
+                print(f"   📊 Örnek: {data[:16].hex()}")
+                diagnosis[api_name] = {
+                    "configured": True,
+                    "working": True,
+                    "bytes_received": len(data)
+                }
+            else:
+                print(f"   ❌ Boş veya yetersiz veri")
+                diagnosis[api_name] = {
+                    "configured": True,
+                    "working": False,
+                    "issue": "Empty response"
+                }
+        except Exception as e:
+            print(f"   💥 Hata: {e}")
+            diagnosis[api_name] = {
+                "configured": True,
+                "working": False,
+                "issue": str(e)
+            }
+    
+    print("\n" + "=" * 80)
+    return diagnosis
+
+def debug_anu_apis():
+    """ANU API'lerini detaylı debug et"""
+    manager = _qrng_manager
+    
+    print("=" * 80)
+    print("🔍 ANU API DETAYLI DEBUG")
+    print("=" * 80)
+    
+    # ANU Legacy
+    print("\n🔬 ANU_LEGACY (Token'sız)")
+    print("-" * 80)
+    if "anu_legacy" in manager.apis:
+        api = manager.apis["anu_legacy"]
+        print(f"URL: {api.url}")
+        print(f"Rate Limit: {QRNGConfig.RATE_LIMITS.get('anu_legacy', 0)}s")
+        print(f"Last Request: {time.time() - api.last_request_time:.1f}s ago")
+        
+        # Rate limit'i geçici olarak bypass et (debug için)
+        api.last_request_time = 0
+        
+        result = api.fetch(32, debug=True)
+        if result:
+            print(f"✅ Başarılı: {len(result)} byte")
+            print(f"📊 Örnek: {result.hex()}")
+        else:
+            print("❌ Başarısız")
+    else:
+        print("⚠️ API yapılandırılmamış")
+    
+    # ANU Token
+    print("\n🔬 ANU_TOKEN (Token'lı)")
+    print("-" * 80)
+    if "anu_token" in manager.apis:
+        api = manager.apis["anu_token"]
+        print(f"URL: {api.url}")
+        print(f"Token: {api.api_token[:10]}...{api.api_token[-4:]} ({len(api.api_token)} chars)")
+        print(f"Rate Limit: {QRNGConfig.RATE_LIMITS.get('anu_token', 0)}s")
+        print(f"Last Request: {time.time() - api.last_request_time:.1f}s ago")
+        
+        # Rate limit'i geçici olarak bypass et (debug için)
+        api.last_request_time = 0
+        
+        result = api.fetch(32, debug=True)
+        if result:
+            print(f"✅ Başarılı: {len(result)} byte")
+            print(f"📊 Örnek: {result.hex()}")
+        else:
+            print("❌ Başarısız")
+    else:
+        print("⚠️ API yapılandırılmamış")
+    
+    print("=" * 80)
+
+def get_api_status() -> Dict[str, Any]:
+    """
+    Tüm API'lerin anlık durumunu döndürür.
+    Limit aşımı, rate limit, token durumu vb. bilgileri gösterir.
+    """
+    manager = _qrng_manager
+    status = {}
+    
+    print("=" * 80)
+    print("📊 API DURUM RAPORU")
+    print("=" * 80)
+    
+    for api_name in QRNGConfig.PRIORITY:
+        if api_name not in manager.apis:
+            print(f"\n⏭️  {api_name}: Yapılandırılmamış")
+            status[api_name] = {"status": "not_configured"}
+            continue
+        
+        api = manager.apis[api_name]
+        
+        # Rate limit kontrolü
+        rate_limit = QRNGConfig.RATE_LIMITS.get(api_name, 0)
+        can_request = api.can_request()
+        
+        if can_request:
+            limit_status = "✅ Hazır"
+        else:
+            elapsed = time.time() - api.last_request_time
+            wait_time = rate_limit - elapsed
+            limit_status = f"⏳ {wait_time:.1f}s beklenmeli"
+        
+        # Token durumu
+        if api.requires_token:
+            token = getattr(api, 'api_key', None) or getattr(api, 'refresh_token', None) or getattr(api, 'api_token', None)
+            token_status = f"✅ {token[:10]}..." if token else "❌ Eksik"
+        else:
+            token_status = "🌐 Gerekmiyor"
+        
+        print(f"\n🔬 {api_name.upper()}")
+        print(f"   Token: {token_status}")
+        print(f"   Rate Limit: {limit_status}")
+        print(f"   İstek Sayısı: {api.request_count}")
+        print(f"   Toplam Byte: {api.total_bytes}")
+        
+        status[api_name] = {
+            "configured": True,
+            "requires_token": api.requires_token,
+            "can_request": can_request,
+            "request_count": api.request_count,
+            "total_bytes": api.total_bytes
+        }
+    
+    print("\n" + "=" * 80)
+    return status
 
 
 # ============================================================================
