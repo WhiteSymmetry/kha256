@@ -33,7 +33,6 @@ argon2-cffi = ">=25.1.0"
 blake3 = ">=1.0.9"
 aiohttp = ">=3.14.1"
 python-dotenv = ">=1.2.2"
-nest_asyncio = ">=1.6.0"
 
 [tasks]
 build = "python -m build"
