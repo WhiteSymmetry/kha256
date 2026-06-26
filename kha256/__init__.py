@@ -45,21 +45,21 @@ from email.message import Message
 
 try:
     from importlib.metadata import version as _pkg_version, metadata as _pkg_metadata
-    
+
     __version__ = _pkg_version("kha256")
-    
+
     # ✅ DÜZELTME: PackageMetadata'yi email.message.Message'a cast et
     # Runtime'da zaten Message objesi, sadece tip kontrolü için cast
     _meta = cast(Message, _pkg_metadata("kha256"))
-    
+
     __author__ = _meta.get("Author-email", "Mehmet Keçeci <mkececi@yaani.com>")
     __license__ = _meta.get("License", "AGPL-3.0-or-later")
-    
+
 except Exception:
     __version__ = "0.4.1"
     __author__ = "Mehmet Keçeci"
     __license__ = "AGPL-3.0-or-later"
-    
+
 except Exception:
     # Fallback for development or if metadata is not available
     __version__ = "0.4.0"
