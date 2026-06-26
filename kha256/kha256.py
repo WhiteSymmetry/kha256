@@ -10612,12 +10612,10 @@ def gpu_resistance_test(hasher, count=100):
 def secure_avalanche_mix(data: bytes, salt: bytes) -> bytes:
     """NIST onaylı, deterministik, side-channel safe mixing"""
     # BLAKE3 zaten mükemmel avalanche effect'e sahip
-    return blake3(data + salt, length=64).digest()  # 512-bit output
+    return blake3(data + salt).digest(length=64)  # 512-bit output
 
 
 # ChaCha20 Permutation (Hızlı + Güvenli)
-
-
 def chacha_avalanche_mix(data: bytes, salt: bytes) -> bytes:
     """ChaCha20 quarter rounds - kanıtlanmış diffusion"""
     key = (data + salt)[:32]  # 256-bit key
