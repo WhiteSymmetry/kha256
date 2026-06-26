@@ -40,7 +40,7 @@ try:
     __license__ = _meta.get("License", "AGPL-3.0-or-later")
 except Exception:
     # Fallback for development or if metadata is not available
-    __version__ = "0.3.8"
+    __version__ = "0.3.9"
     __author__ = "Mehmet Keçeci"
     __license__ = "AGPL-3.0-or-later"
 
@@ -160,7 +160,11 @@ from .kha256 import (
     KHA_AVAILABLE, TYPE_NAMES, WORKING_TYPES, Colors,
 
     # quantum
-    qKHA256, _fallback_bytes, get_quantum_bytes
+    qKHA256, _fallback_bytes, get_quantum_bytes,
+    mqKHA256, QRNGConfig, BaseQRNG, LFDQRNG, QRANDOMQRNG, ANULegacyQRNG, ANUQRNG, ANUTokenQRNG,
+    OutshiftQRNG, QCIQRNG, HybridQRNGManager, get_mquantum_bytes, get_quantum_stats,
+    diagnose_quantum_apis, test_quantum_quality, test_all_quantum_apis, debug_anu_apis,
+    _qrng_manager, get_api_status,
 )
 
 # ======================================================================
