@@ -39,14 +39,10 @@ try:
 
     __version__ = _pkg_version("kha256")
     _meta = _pkg_metadata("kha256")
-
-    # PackageMetadata does not have a .get() method, convert to dict
-    _meta_dict = dict(_meta.items())
+    _meta_dict = dict(_meta.items())  # pyright: ignore[reportAttributeAccessIssue]
     __author__ = _meta_dict.get("Author-email", "Mehmet Keçeci <mkececi@yaani.com>")
     __license__ = _meta_dict.get("License", "AGPL-3.0-or-later")
-
 except Exception:
-    # Fallback for development or missing metadata
     __version__ = "0.4.1"
     __author__ = "Mehmet Keçeci"
     __license__ = "AGPL-3.0-or-later"
@@ -277,6 +273,7 @@ from .kha256 import (  # Main hash classes and engines; Core engines and configu
     test_streaming,
     test_true_memory_hard,
     test_true_memory_hard_direct,
+    test_deterministic_behavior,
     true_memory_hard_random,
     ultra_fast_hash,
     ultra_fast_hash_hex,
