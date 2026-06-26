@@ -19,8 +19,8 @@ and mathematical constants.
 :license: AGPL-3.0-or-later
 :copyright: Copyright 2025-2026 Mehmet Keçeci
 
-# pip install -U aiohttp argon2-cffi python-dotenv nest_asyncio bcrypt blake3 kececinumbers pycryptodome xxhash pandas numpy cryptography ipywidgets ipython scipy
-# conda install -c conda-forge aiohttp argon2-cffi python-dotenv nest_asyncio bcrypt blake3 kececinumbers pycryptodome python-xxhash pandas numpy cryptography pandas ipywidgets ipython scipy
+# pip install -U aiohttp argon2-cffi python-dotenv nest-asyncio2 bcrypt blake3 kececinumbers pycryptodome xxhash pandas numpy cryptography ipywidgets ipython scipy
+# conda install -c conda-forge aiohttp argon2-cffi python-dotenv nest-asyncio2 bcrypt blake3 kececinumbers pycryptodome python-xxhash pandas numpy cryptography pandas ipywidgets ipython scipy
 # pip install xxhash: # xxh32 collision riski yüksek (64-bit için ~yüz milyonlarda %0.03)
 
 * 0.3.7. qKHA256: quantum random
@@ -57,7 +57,7 @@ import json
 import logging
 import math
 import matplotlib.pyplot as plt
-import nest_asyncio
+import nest_asyncio2
 import numpy as np
 import os
 import pandas as pd
@@ -82,7 +82,7 @@ import xxhash
 from . import __version__  # paket __init__.py'de tanımlı
 
 # Jupyter Notebook uyumluluğu için
-nest_asyncio.apply()
+nest_asyncio2.apply()
 
 # .env dosyasını yükle
 load_dotenv()
@@ -264,11 +264,11 @@ try:
     from . import __version__
 except ImportError:
     # Dosya doğrudan çalıştırıldığında (Örn: python kha256.py) fallback
-    __version__ = "0.3.9"
+    __version__ = "0.4.0"
 
 
 # Version information
-#__version__ = "0.3.9"  # Updated
+#__version__ = "0.4.0"  # Updated
 __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0-or-later"
 __status__ = "Pre-Production"
