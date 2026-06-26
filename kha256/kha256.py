@@ -79,7 +79,8 @@ import uuid
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Literal, NamedTuple, Optional, overload, Tuple, Union, cast
 import xxhash
 
-from . import __version__  # paket __init__.py'de tanımlı
+#from . import __version__  # paket __init__.py'de tanımlı
+from ._version import __version__, __author__, __license__
 
 # Jupyter Notebook uyumluluğu için
 nest_asyncio2.apply()
@@ -10616,6 +10617,8 @@ def secure_avalanche_mix(data: bytes, salt: bytes) -> bytes:
 
 
 # ChaCha20 Permutation (Hızlı + Güvenli)
+
+
 def chacha_avalanche_mix(data: bytes, salt: bytes) -> bytes:
     """ChaCha20 quarter rounds - kanıtlanmış diffusion"""
     key = (data + salt)[:32]  # 256-bit key
@@ -12726,6 +12729,7 @@ class MemoryHardDemo:
 
         print(info)
 
+
 class db:
     """database manager"""
 
@@ -12736,23 +12740,26 @@ class db:
     @contextmanager
     def get_db_connection():
         """Thread-safe veritabanı bağlantısı için context manager"""
-        # ✅ DÜZELTME: Lokal değişken oluşturma, sınıf attribute'unu kullan
-        if not hasattr(db.thread_local, "conn"):
-            db.thread_local.conn = sqlite3.connect("users.db", check_same_thread=False)
-            db.thread_local.conn.execute("PRAGMA journal_mode=WAL")
-            db.thread_local.conn.execute("PRAGMA busy_timeout=5000")
+        # Thread başına bir connection
+        # Thread-local storage for database connections
+        thread_local = threading.local()
 
-        conn = db.thread_local.conn
+        if not hasattr(db.thread_local, "conn"):
+            thread_local.conn = sqlite3.connect("users.db", check_same_thread=False)
+            thread_local.conn.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging
+            thread_local.conn.execute("PRAGMA busy_timeout=5000")  # 5 second timeout
+
+        conn = thread_local.conn
         try:
             yield conn
         except sqlite3.Error as e:
             print(f"Veritabanı hatası: {e}")
+            # Bağlantıyı kapat ve yeniden dene
             try:
                 conn.close()
             except BaseException:
                 pass
-            if hasattr(db.thread_local, "conn"):
-                delattr(db.thread_local, "conn")
+            delattr(thread_local, "conn")
             raise
 
     def setup_database():
@@ -12762,6 +12769,7 @@ class db:
             try:
                 with db.get_db_connection() as conn:
                     cursor = conn.cursor()
+                    # Foreign keys etkinleştir
                     cursor.execute("PRAGMA foreign_keys = ON")
 
                     cursor.execute("""
@@ -12774,6 +12782,7 @@ class db:
                         )
                     """)
 
+                    # Index oluştur
                     cursor.execute(
                         "CREATE INDEX IF NOT EXISTS idx_username ON users(username)"
                     )
@@ -12801,6 +12810,7 @@ class db:
 
         for attempt in range(retry_count):
             try:
+                # Önce kullanıcı var mı kontrol et
                 with db.get_db_connection() as conn:
                     cursor = conn.cursor()
                     cursor.execute(
@@ -12810,17 +12820,21 @@ class db:
                         print(f"⚠️  '{username}' kullanıcısı zaten kayıtlı")
                         return False
 
-                salt = secrets.token_bytes(32)
+                # Tuz oluştur - hasher'ın dışında oluştur
+                salt = secrets.token_bytes(32)  # 32 byte yeterli, 64'e gerek yok
 
+                # Memory-hard hash oluştur
                 print(f"⏳ '{username}' için memory-hard hash hesaplanıyor...")
                 hasher = TrueMemoryHardHasher(
                     memory_cost_kb=8192, time_cost=3, parallelism=1
                 )
 
+                # ✅ DÜZELTME: salt parametresini adlandır!
                 password_hash = hasher.hash(password, salt=salt)
 
                 print("✅ Hash hesaplandı")
 
+                # Veritabanına kaydet
                 with db.get_db_connection() as conn:
                     cursor = conn.cursor()
                     cursor.execute(
@@ -12847,6 +12861,7 @@ class db:
             except Exception as e:
                 print(f"❌ Kayıt hatası: {e}")
                 import traceback
+
                 traceback.print_exc()
                 return False
 
@@ -12869,21 +12884,30 @@ class db:
                     result = cursor.fetchone()
 
                     if not result:
+                        # Timing attack koruması için gecikme
                         time.sleep(0.5)
                         print(f"❌ Kullanıcı '{username}' bulunamadı")
                         return False
 
                     stored_hash, salt = result
 
+                    # stored_hash string olarak geliyor, salt bytes olarak
                     print(f"⏳ '{username}' için hash doğrulanıyor...")
 
+                    # ✅ DÜZELTME: verify metodunu kullan!
                     hasher = TrueMemoryHardHasher(
                         memory_cost_kb=8192, time_cost=3, parallelism=1
                     )
 
+                    # Ya verify metodunu kullan:
                     is_valid = hasher.verify(password, stored_hash, salt)
 
-                    if is_valid:
+                    # Ya da hash metoduna salt'ı açıkça ver:
+                    # computed_hash = hasher.hash(password, salt=salt)  # salt
+                    # parametresini adlandır!
+
+                    if is_valid:  # veya computed_hash == stored_hash
+                        # Başarılı giriş tarihini güncelle
                         cursor.execute(
                             "UPDATE users SET last_login = datetime('now') WHERE username = ?",
                             (username,),
@@ -12905,6 +12929,7 @@ class db:
             except Exception as e:
                 print(f"❌ Doğrulama hatası: {e}")
                 import traceback
+
                 traceback.print_exc()
                 return False
 
@@ -12963,15 +12988,14 @@ class db:
     def close_all_connections():
         """Tüm veritabanı bağlantılarını kapat"""
         try:
-            # ✅ DÜZELTME: db.thread_local kullan
             if hasattr(db.thread_local, "conn"):
-                db.thread_local.conn.close()
-                delattr(db.thread_local, "conn")
+                thread_local.conn.close()
+                delattr(thread_local, "conn")
                 print("✅ Veritabanı bağlantıları kapatıldı")
         except BaseException:
             pass
 
-    # Jupyter için interaktif fonksiyon
+    # Jupyter için interaktif fonksiyon - Jupyter widget'larını import edelim
     import ipywidgets as widgets
     from IPython.display import HTML, clear_output, display
 
@@ -12981,8 +13005,10 @@ class db:
         print("🎮 İNTERAKTİF MEMORY-HARD HASH DEMO")
         print("=" * 60)
 
+        # Önce veritabanını kur
         db.setup_database()
 
+        # Widget'ları oluştur
         username_input = db.widgets.Text(
             placeholder="Kullanıcı adı",
             description="Kullanıcı:",
@@ -13078,6 +13104,7 @@ class db:
         list_btn.on_click(on_list_click)
         clear_btn.on_click(on_clear_click)
 
+        # Layout
         buttons = db.widgets.HBox([register_btn, login_btn, list_btn, clear_btn])
 
         form = db.widgets.VBox(
@@ -13095,6 +13122,7 @@ class db:
         )
 
         display(form)
+
 
 def performance_comparison():
     """Memory-hard vs normal hash performans karşılaştırması"""
