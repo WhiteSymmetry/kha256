@@ -7,7 +7,7 @@ This module contains version constants and package metadata used throughout
 the KHA-256 cryptographic hash algorithm implementation.
 """
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 # Package version following Semantic Versioning (SemVer)
 # Format: MAJOR.MINOR.PATCH
