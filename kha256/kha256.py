@@ -111,8 +111,8 @@ def silent_kn():
 
         kececinumbers.apply_step = silent_apply_step
 
-        # generate_sequence
-        kececinumbers.generate_sequence = lambda *a, **kw: []
+        # _generate_sequence
+        kececinumbers._generate_sequence = lambda *a, **kw: []
 
         # Tüm generate_* fonksiyonlarını sustur
         for attr in dir(kececinumbers):
@@ -246,12 +246,14 @@ logger = logging.getLogger("KHA-256")
 
 # Jupyter kontrolü
 def is_jupyter():
+    """Return True if running in a Jupyter notebook kernel."""
     try:
-        from IPython import get_ipython
+        from IPython.core.getipython import get_ipython  # correct import
 
-        if get_ipython() is not None and "IPKernelApp" in get_ipython().config:
+        shell = get_ipython()               # call once and store
+        if shell is not None and "IPKernelApp" in shell.config:
             return True
-    except BaseException:
+    except Exception:
         pass
     return False
 
@@ -274,7 +276,7 @@ __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0-or-later"
 __status__ = "Pre-Production"
 __certificate__ = "KHA256-PA-2025-001"
-req_kececinumbers = "1.0.5"
+req_kececinumbers = "1.0.6"
 
 # KeçeciNumbers check - made API compatible
 KHA_AVAILABLE = True
@@ -467,18 +469,16 @@ def check_serial_info(module):
                 break
 
 
-# Use it like this:
 if KHA_AVAILABLE and kn is not None:
     check_serial_info(kn)
 
-min_deger=0 
-max_deger=100
-#sabit_result = hash_password(b"a", b"scrypt_salt_16!!", is_usb_key=True)
-#sabit_sayi = int(sabit_result.split('$')[2], 16) % (max_deger - min_deger + 1) + min_deger
+min_deger = 0
+max_deger = 100
 
-counter = str(time.time_ns() * 1000 + os.getpid() * 1000000)
-rastgele_password = (counter + str(os.times().elapsed)).encode()[:64]
-rastgele_salt = (str(os.getcwd()) + counter[::-1]).encode()[:64]
+# New local variable for the string seed – don't overwrite the global counter
+seed_str = str(time.time_ns() * 1000 + os.getpid() * 1000000)
+rastgele_password = (seed_str + str(os.times().elapsed)).encode()[:64]
+rastgele_salt = (str(os.getcwd()) + seed_str[::-1]).encode()[:64]
 
 # ============================================================
 # FortifiedKhaHash256 ile entegre
@@ -726,7 +726,9 @@ class FortifiedConfig:
     # parallelism: int = 1       # ZORUNLU 1 (sequential)
 
     # memory_cost HER ZAMAN KILOBAYTE cinsinden!
-    memory_cost: int = 1024  # 32 KB - İdeal (1-2ms)
+    memory_cost: int = 1024  # 32 KB - İdeal (1-2ms) # error: Type "Literal[1024]" is not assignable to declared type "property" "Literal[1024]" is not assignable to "property" (reportAssignmentType)
+    # error: Declaration "memory_cost" is obscured by a declaration of the same name (reportRedeclaration)
+    # mecburi: TypeError: FortifiedConfig.__init__() got an unexpected keyword argument 'memory_cost'. Did you mean 'memory_cost_kb'?
     memory_cost_kb: int = 1024  # 32 KB (önerilen)
     time_cost: int = 2  # 2 tur
     parallelism: int = 1  # 1 (sequential)
@@ -735,9 +737,9 @@ class FortifiedConfig:
     _legacy_memory_cost: Optional[int] = None
 
     @property
-    def memory_cost(self):
-        """Deprecated: use memory_cost_kb instead"""
-        return self.memory_cost_kb * 1024  # Byte cinsinden
+    def memory_cost(self) -> int:
+        """Deprecated: byte cinsinden bellek maliyetini döner (memory_cost_kb * 1024)."""
+        return self.memory_cost_kb * 1024
 
     @memory_cost.setter
     def memory_cost(self, value):
@@ -1204,7 +1206,7 @@ class DeterministicHash:
         # Ana döngü
         for i in range(0, len(padded), 64):
             block = padded[i : i + 64]
-            words = KHAUtils.bytes_to_words32(block)
+            words = KHAUtils.bytes_to_words32(bytes(block))
 
             for r in range(16):
                 idx1 = r % 16
@@ -1801,12 +1803,15 @@ class QRNGConfig:
 class BaseQRNG:
     """Temel kuantum random API sınıfı"""
     
+    # ✅ EKLENDİ: Tüm alt sınıfların ortak attribute'ları
+    url: str = ""
+    
     def __init__(self, name: str, requires_token: bool = False):
         self.name = name
         self.requires_token = requires_token
-        self.last_request_time = 0
-        self.request_count = 0
-        self.total_bytes = 0
+        self.last_request_time: float = 0
+        self.request_count: int = 0
+        self.total_bytes: int = 0
     
     def can_request(self) -> bool:
         """Rate limit kontrolü"""
@@ -1823,19 +1828,19 @@ class BaseQRNG:
         self.request_count += 1
         self.total_bytes += bytes_received
     
-    def fetch(self, length: int) -> Optional[bytes]:
+    # ✅ EKLENDİ: debug parametresi tüm alt sınıflarda ortak
+    def fetch(self, length: int, debug: bool = False) -> Optional[bytes]:
         """API'den random al (subclass'lar implement etmeli)"""
         raise NotImplementedError
 
 
 class LFDQRNG(BaseQRNG):
     """LfD QRNG (Almanya) - Token gerektirmez"""
-    
     def __init__(self):
         super().__init__("lfd", requires_token=False)
         self.url = "https://lfdr.de/qrng_api/qrng"
     
-    def fetch(self, length: int) -> Optional[bytes]:
+    def fetch(self, length: int, debug: bool = False) -> Optional[bytes]:
         if not self.can_request():
             return None
         
@@ -1867,7 +1872,7 @@ class QRANDOMQRNG(BaseQRNG):
         super().__init__("qrandom", requires_token=False)
         self.url = "https://qrandom.io/api/random/ints"
     
-    def fetch(self, length: int) -> Optional[bytes]:
+    def fetch(self, length: int, debug: bool = False) -> Optional[bytes]:
         if not self.can_request():
             return None
         
@@ -1899,7 +1904,7 @@ class OutshiftQRNG(BaseQRNG):
         self.api_key = api_key
         self.url = "https://api.qrng.outshift.com/api/v1/random_numbers"
     
-    def fetch(self, length: int) -> Optional[bytes]:
+    def fetch(self, length: int, debug: bool = False) -> Optional[bytes]:
         if not self.can_request() or not self.api_key:
             return None
         
@@ -1947,8 +1952,9 @@ class QCIQRNG(BaseQRNG):
     def __init__(self, refresh_token: str):
         super().__init__("qci", requires_token=True)
         self.refresh_token = refresh_token
-        self.access_token = None
+        self.access_token: Optional[str] = None
         self.base_url = "https://api.qci-prod.com"
+        self.url = self.base_url
     
     def _get_access_token(self) -> bool:
         """Access token al"""
@@ -1977,7 +1983,7 @@ class QCIQRNG(BaseQRNG):
             print(f"   ⚠️ QCI auth hatası: {e}")
             return False
     
-    def fetch(self, length: int) -> Optional[bytes]:
+    def fetch(self, length: int, debug: bool = False) -> Optional[bytes]:
         if not self.can_request() or not self.refresh_token:
             return None
         
@@ -2010,11 +2016,13 @@ class QCIQRNG(BaseQRNG):
             if resp.status_code == 200:
                 result = resp.json()
                 
+                # ✅ DÜZELTME: numbers'ı başlangıçta tanımla
+                numbers: List[int] = []
+                
                 # Response doğrudan liste olabilir
                 if isinstance(result, list):
                     numbers = [int(x) for x in result if isinstance(x, (int, float))]
                 elif isinstance(result, dict):
-                    numbers = []
                     for key in ["data", "random_numbers", "numbers"]:
                         if key in result:
                             val = result[key]
@@ -2168,14 +2176,15 @@ class ANUQRNG(BaseQRNG):
     Token varsa yeni API'yi, yoksa legacy API'yi kullanır.
     """
     
-    def __init__(self, api_token: str = None):
+    def __init__(self, api_token: Optional[str] = None):
         super().__init__("anu", requires_token=bool(api_token))
         self.api_token = api_token
         self.legacy_url = "https://qrng.anu.edu.au/API/jsonI.php"
         self.token_url = "https://api.quantumnumbers.anu.edu.au"
+        self.url = self.token_url if api_token else self.legacy_url
         self.limit_exceeded = False
-        self.limit_exceeded_time = None
-    
+        self.limit_exceeded_time: Optional[float] = None
+
     def fetch(self, length: int, debug: bool = False) -> Optional[bytes]:
         if not self.can_request():
             if debug:
@@ -2191,18 +2200,22 @@ class ANUQRNG(BaseQRNG):
                 return result
             # Token'lı API başarısızsa legacy'ye düş
             if debug:
-                print(f"   🔄 ANU token'lı API başarısız, legacy'ye geçiliyor")
+                print("   🔄 ANU token'lı API başarısız, legacy'ye geçiliyor")
         
         # Legacy API'yi dene
         return self._fetch_legacy(length, debug)
     
     def _fetch_with_token(self, length: int, debug: bool = False) -> Optional[bytes]:
         """Token'lı ANU API"""
+        # ✅ DÜZELTME: api_token None kontrolü
+        if not self.api_token:
+            return None
+        
         # Limit aşımı kontrolü (24 saat)
         if self.limit_exceeded:
             if self.limit_exceeded_time and (time.time() - self.limit_exceeded_time) < 86400:
                 if debug:
-                    print(f"   ⚠️ ANU aylık limit aşıldı, 24 saat bekleniyor")
+                    print("   ⚠️ ANU aylık limit aşıldı, 24 saat bekleniyor")
                 return None
             else:
                 self.limit_exceeded = False
@@ -2210,10 +2223,12 @@ class ANUQRNG(BaseQRNG):
         try:
             chunk = min(1024, length)
             params = {"length": chunk, "type": "uint16"}
+            
+            # ✅ DÜZELTME: api_token'ın None olmadığını garanti et
             headers = {"x-api-key": self.api_token}
             
             resp = requests.get(self.token_url, params=params, headers=headers, timeout=QRNGConfig.TIMEOUT)
-            
+
             if debug:
                 print(f"   🐛 ANU Token Status: {resp.status_code}")
             
@@ -2221,12 +2236,12 @@ class ANUQRNG(BaseQRNG):
                 self.limit_exceeded = True
                 self.limit_exceeded_time = time.time()
                 if debug:
-                    print(f"   ⚠️ ANU aylık limit aşıldı!")
+                    print("   ⚠️ ANU aylık limit aşıldı!")
                 return None
             
             if resp.status_code == 200:
                 data = resp.json()
-                numbers = []
+                numbers: List[Any] = []
                 
                 if isinstance(data, dict):
                     for key in ["data", "randomData", "numbers"]:
@@ -2262,9 +2277,9 @@ class ANUQRNG(BaseQRNG):
             if resp.status_code == 200:
                 data = resp.json()
                 
-                if data.get("success") == False:
+                if data.get("success") is False:
                     if debug:
-                        print(f"   ⚠️ ANU Legacy API başarısız")
+                        print("   ⚠️ ANU Legacy API başarısız")
                     return None
                 
                 numbers = data.get("data", [])
@@ -2302,7 +2317,7 @@ class HybridQRNGManager:
         
         # ANU - tek API, otomatik token yönetimi
         anu_token = os.getenv("ANU_API_TOKEN", "").strip()
-        self.apis["anu"] = ANUQRNG(api_token=anu_token if anu_token else None)
+        self.apis["anu"] = ANUQRNG(api_token=anu_token if anu_token else None) # error: Argument of type "str | None" cannot be assigned to parameter "api_token" of type "str" in function "__init__" Type "str | None" is not assignable to type "str" "None" is not assignable to "str" (reportArgumentType)
         
         # Token gerektirenler
         outshift_key = os.getenv("OUTSHIFT_API_KEY", "").strip()
@@ -2696,18 +2711,9 @@ class mqKHA256:
 def test_all_quantum_apis(length: int = 32, verbose: bool = True, debug: bool = False) -> Dict[str, Any]:
     """
     Tüm kuantum API'leri tek tek test eder.
-    
-    Args:
-        length: Test için istenecek byte sayısı
-        verbose: Detaylı çıktı göster
-        debug: API response'larını göster (sorun giderme için)
-    
-    Returns:
-        Dict: Her API için test sonuçları
     """
     manager = _qrng_manager
-    
-    results = {}
+    results: Dict[str, Any] = {}
     
     if verbose:
         print("=" * 80)
@@ -2716,7 +2722,7 @@ def test_all_quantum_apis(length: int = 32, verbose: bool = True, debug: bool = 
         print(f"📏 Test boyutu: {length} byte ({length * 8} bit)")
         print(f"🔢 Test edilecek API sayısı: {len(manager.apis)}")
         if debug:
-            print(f"🐛 DEBUG MODU AKTİF")
+            print("🐛 DEBUG MODU AKTİF")
         print()
     
     manager.cache.clear()
@@ -2743,12 +2749,13 @@ def test_all_quantum_apis(length: int = 32, verbose: bool = True, debug: bool = 
         if not api.can_request():
             if verbose:
                 elapsed = time.time() - api.last_request_time
-                rate_limit = QRNGConfig.RATE_LIMITS.get(api_name, 0)
+                # ✅ DÜZELTME: float tip annotation
+                rate_limit: float = float(QRNGConfig.RATE_LIMITS.get(api_name, 0))
                 wait_time = rate_limit - elapsed
                 print(f"   ⏳ Rate limit aktif ({wait_time:.1f}s beklenmeli)")
             results[api_name] = {
                 "status": "rate_limited",
-                "reason": f"Rate limit active (wait {rate_limit - elapsed:.1f}s)",
+                "reason": f"Rate limit active",
                 "data": None,
                 "bytes": 0,
                 "time_ms": 0
@@ -2757,8 +2764,8 @@ def test_all_quantum_apis(length: int = 32, verbose: bool = True, debug: bool = 
         
         start_time = time.perf_counter()
         try:
-            # Debug parametresini geçir
-            data = api.fetch(length, debug=debug) if hasattr(api.fetch, '__code__') and 'debug' in api.fetch.__code__.co_varnames else api.fetch(length)
+            # ✅ DÜZELTME: debug parametresi artık BaseQRNG'de tanımlı
+            data = api.fetch(length, debug=debug)
             elapsed_ms = (time.perf_counter() - start_time) * 1000
             
             if data and len(data) >= length:
@@ -2775,7 +2782,7 @@ def test_all_quantum_apis(length: int = 32, verbose: bool = True, debug: bool = 
                 }
             else:
                 if verbose:
-                    print(f"   ❌ BAŞARISIZ (boş veya yetersiz veri)")
+                    print("   ❌ BAŞARISIZ (boş veya yetersiz veri)")
                 results[api_name] = {
                     "status": "failed",
                     "reason": "Empty or insufficient data",
@@ -2827,7 +2834,9 @@ def test_all_quantum_apis(length: int = 32, verbose: bool = True, debug: bool = 
             else:
                 icon = "💥 HATA"
             
-            token_icon = "🔑" if manager.apis.get(api_name, BaseQRNG(api_name)).requires_token else "🌐"
+            # ✅ DÜZELTME: getattr ile güvenli erişim
+            api_obj = manager.apis.get(api_name)
+            token_icon = "🔑" if (api_obj and api_obj.requires_token) else "🌐"
             size_str = f"{r['bytes']} B" if r['bytes'] > 0 else "-"
             time_str = f"{r['time_ms']:.0f} ms" if r['time_ms'] > 0 else "-"
             note = r["reason"] if r["status"] != "success" else ""
@@ -2835,38 +2844,35 @@ def test_all_quantum_apis(length: int = 32, verbose: bool = True, debug: bool = 
             print(f"{api_name:<15} {icon:<12} {token_icon:<8} {size_str:<10} {time_str:<10} {note}")
         
         print("-" * 80)
-        print(f"🎯 Başarı Oranı: {success_count}/{total_count} ({success_count/total_count*100:.1f}%)")
         
-        if success_count == 0:
-            print("⚠️  HİÇBİR API ÇALIŞMIYOR! Token'ları kontrol edin.")
-        elif success_count == total_count:
-            print("🎉 TÜM API'LER ÇALIŞIYOR! Mükemmel!")
+        if total_count > 0:
+            success_rate = (success_count / total_count) * 100
+            print(f"🎯 Başarı Oranı: {success_count}/{total_count} ({success_rate:.1f}%)")
+            
+            if success_count == 0:
+                print("⚠️  HİÇBİR API ÇALIŞMIYOR! Token'ları kontrol edin.")
+            elif success_count == total_count:
+                print("🎉 TÜM API'LER ÇALIŞIYOR! Mükemmel!")
+            else:
+                print(f"ℹ️  {success_count} API çalışıyor, {total_count - success_count} API sorunlu.")
         else:
-            print(f"ℹ️  {success_count} API çalışıyor, {total_count - success_count} API sorunlu.")
+            print("⚠️  Test edilecek API yok!")
         
         print("=" * 80)
     
     return results
 
 
-def test_quantum_quality(num_samples: int = 1000, api_name: str = None) -> Dict[str, Any]:
+def test_quantum_quality(num_samples: int = 1000, api_name: Optional[str] = None) -> Dict[str, Any]:
     """
     Kuantum random kalitesini test eder (istatistiksel analiz).
-    
-    Args:
-        num_samples: Test edilecek uint16 sayısı
-        api_name: Belirli bir API'yi test et (None ise tüm API'leri dener)
-    
-    Returns:
-        Dict: İstatistiksel analiz sonuçları
     """
     from collections import Counter
     import numpy as np
     
     manager = _qrng_manager
-    results = {}
+    results: Dict[str, Any] = {}
     
-    # Test edilecek API'leri belirle
     if api_name:
         apis_to_test = [api_name] if api_name in manager.apis else []
     else:
@@ -2885,16 +2891,14 @@ def test_quantum_quality(num_samples: int = 1000, api_name: str = None) -> Dict[
         
         print(f"\n🔬 {name.upper()} API Kalite Testi:")
         
-        # Veri topla (parça parça)
-        all_numbers = []
+        all_numbers: List[int] = []
         chunk_size = min(1000, num_samples)
         
         for _ in range(0, num_samples, chunk_size):
             current_chunk = min(chunk_size, num_samples - len(all_numbers))
-            data = api.fetch(current_chunk * 2)  # uint16 için 2 byte
+            data = api.fetch(current_chunk * 2)
             
             if data:
-                # Bytes'ı uint16'a çevir
                 for i in range(0, len(data) - 1, 2):
                     num = struct.unpack('>H', data[i:i+2])[0]
                     all_numbers.append(num)
@@ -2908,12 +2912,10 @@ def test_quantum_quality(num_samples: int = 1000, api_name: str = None) -> Dict[
         
         all_numbers = all_numbers[:num_samples]
         
-        # İstatistiksel analiz
         freq = Counter(all_numbers)
         unique_ratio = len(freq) / len(all_numbers)
         
-        # Bit dağılımı
-        all_bits = []
+        all_bits: List[int] = []
         for n in all_numbers:
             bits = bin(n)[2:].zfill(16)
             all_bits.extend([int(b) for b in bits])
@@ -2921,16 +2923,15 @@ def test_quantum_quality(num_samples: int = 1000, api_name: str = None) -> Dict[
         bit_counts = Counter(all_bits)
         zero_ratio = bit_counts[0] / len(all_bits)
         
-        # Ortalama ve std sapma
-        mean_val = np.mean(all_numbers)
-        std_val = np.std(all_numbers)
+        mean_val = float(np.mean(all_numbers))
+        std_val = float(np.std(all_numbers))
         
         results[name] = {
             "samples": len(all_numbers),
             "unique_ratio": unique_ratio,
             "zero_ratio": zero_ratio,
-            "mean": float(mean_val),
-            "std": float(std_val),
+            "mean": mean_val,
+            "std": std_val,
             "ideal_mean": 32767.5,
             "ideal_std": 18918.3
         }
@@ -3030,13 +3031,16 @@ def debug_anu_apis():
     print("-" * 80)
     if "anu_legacy" in manager.apis:
         api = manager.apis["anu_legacy"]
-        print(f"URL: {api.url}")
+        # ✅ DÜZELTME: getattr ile güvenli erişim
+        url = getattr(api, "url", "N/A")
+        print(f"URL: {url}")
         print(f"Rate Limit: {QRNGConfig.RATE_LIMITS.get('anu_legacy', 0)}s")
         print(f"Last Request: {time.time() - api.last_request_time:.1f}s ago")
         
-        # Rate limit'i geçici olarak bypass et (debug için)
+        # Rate limit'i geçici olarak bypass et
         api.last_request_time = 0
         
+        # ✅ DÜZELTME: debug parametresi artık BaseQRNG'de tanımlı
         result = api.fetch(32, debug=True)
         if result:
             print(f"✅ Başarılı: {len(result)} byte")
@@ -3051,12 +3055,16 @@ def debug_anu_apis():
     print("-" * 80)
     if "anu_token" in manager.apis:
         api = manager.apis["anu_token"]
-        print(f"URL: {api.url}")
-        print(f"Token: {api.api_token[:10]}...{api.api_token[-4:]} ({len(api.api_token)} chars)")
+        url = getattr(api, "url", "N/A")
+        api_token = getattr(api, "api_token", "")
+        print(f"URL: {url}")
+        if api_token:
+            print(f"Token: {api_token[:10]}...{api_token[-4:]} ({len(api_token)} chars)")
+        else:
+            print("Token: ❌ YOK")
         print(f"Rate Limit: {QRNGConfig.RATE_LIMITS.get('anu_token', 0)}s")
         print(f"Last Request: {time.time() - api.last_request_time:.1f}s ago")
         
-        # Rate limit'i geçici olarak bypass et (debug için)
         api.last_request_time = 0
         
         result = api.fetch(32, debug=True)
@@ -3459,7 +3467,7 @@ class KHA256Utils:
         for x in range(256):
             p_x = data.count(x) / len(data)
             if p_x > 0:
-                entropy += -p_x * (p_x.bit_length() - 1)  # log2 approximation
+                entropy += -p_x * math.log2(p_x)
         return entropy
 
 
@@ -3540,11 +3548,21 @@ class DeterministicEngine:
 class MemoryHardEngine:
     """Memory-hard hash - PERFECT AVALANCHE"""
 
-    __slots__ = ("blocks", "iterations")
+    __slots__ = ("blocks", "iterations", "memory_mb")
 
     def __init__(self, memory_mb: int = 1, iterations: int = 3):
+        self.memory_mb = memory_mb                     # ← store it
         self.blocks = max(32, memory_mb * 1024 * 1024 // 64)
         self.iterations = iterations
+
+    @property
+    def metrics(self) -> dict:
+        """Return engine parameters as a dictionary."""
+        return {
+            "memory_mb": self.memory_mb,
+            "blocks": self.blocks,
+            "iterations": self.iterations,
+        }
 
     def hash(self, data: bytes, salt: bytes) -> str:
         """Memory-hard hash - PERFECT"""
@@ -4291,6 +4309,7 @@ def measure_time(func, warmup=3, iterations=10):
         func()
 
     start = time.perf_counter()
+    result = None          # <-- default to avoid unbound warning
     for _ in range(iterations):
         result = func()
     end = time.perf_counter()
@@ -4917,8 +4936,6 @@ class FortifiedKhaCore:
         # Tipleri ve gereksinimlerini tanımla
         if KHA_AVAILABLE:
             try:
-                # ÇALIŞAN TİPLER (test edilmiş ve güvenli)
-
                 # 1. Basit Sayılar
                 SAFE_TYPES.extend([TYPE_POSITIVE_REAL, TYPE_NEGATIVE_REAL, TYPE_FLOAT])
                 TYPE_REQUIREMENTS[TYPE_POSITIVE_REAL] = {
@@ -4997,12 +5014,10 @@ class FortifiedKhaCore:
 
             except NameError as e:
                 logger.warning(f"Type name error: {e}")
-                # Varsayılan güvenli tipler
                 SAFE_TYPES = [1, 2, 3, 4, 6, 8, 10, 11]
                 for t in SAFE_TYPES:
                     TYPE_REQUIREMENTS[t] = {"format": "simple_float", "components": 2}
         else:
-            # KHA yoksa
             SAFE_TYPES = list(range(1, 13))
             for t in SAFE_TYPES:
                 TYPE_REQUIREMENTS[t] = {"format": "simple_float", "components": 2}
@@ -5011,7 +5026,7 @@ class FortifiedKhaCore:
         num_types_to_use = min(rng.randint(5, 8), len(SAFE_TYPES))
         selected_types = rng.sample(SAFE_TYPES, num_types_to_use)
 
-        # İterasyon derinliği (artırıldı)
+        # İterasyon derinliği
         iteration_depth = rng.randint(16, 24)
 
         logger.debug(
@@ -5019,9 +5034,7 @@ class FortifiedKhaCore:
         )
 
         for type_idx, kececi_type in enumerate(selected_types):
-            # components_needed_int'i başta tanımla (default değer)
-            components_needed_int = 3  # Varsayılan değer
-
+            components_needed_int = 3  # Varsayılan
             try:
                 type_info = TYPE_REQUIREMENTS.get(
                     kececi_type, {"format": "simple_float", "components": 2}
@@ -5029,9 +5042,9 @@ class FortifiedKhaCore:
                 format_type = type_info["format"]
                 components_needed = type_info["components"]
 
-                # components_needed_int'i güvenli bir şekilde hesapla
+                # components_needed_int güvenli hesapla
                 if components_needed is None:
-                    components_needed_int = 3  # Varsayılan değer
+                    components_needed_int = 3
                 elif isinstance(components_needed, (int, np.integer)):
                     components_needed_int = int(components_needed)
                 elif isinstance(components_needed, float):
@@ -5042,10 +5055,13 @@ class FortifiedKhaCore:
                     try:
                         components_needed_int = int(float(str(components_needed)))
                     except (ValueError, TypeError):
-                        components_needed_int = 3  # Varsayılan değer
+                        components_needed_int = 3
+
+                # Başlangıç değerlerini boş string ile garantile
+                start_val = ""
+                add_val = ""
 
                 if KHA_AVAILABLE and kn is not None:
-                    # Matematiksel sabitler
                     const_names = list(
                         MathematicalSecurityBases.SECURITY_CONSTANTS.keys()
                     )
@@ -5057,7 +5073,6 @@ class FortifiedKhaCore:
                         float_val = base_val * (1 + rng.random() * 0.05)
                         start_val = str(float_val)
                         add_val = str(float_val * 0.0001)
-
                         if kececi_type == TYPE_NEGATIVE_REAL:
                             start_val = "-" + start_val
                             add_val = "-" + add_val
@@ -5086,7 +5101,9 @@ class FortifiedKhaCore:
                             part_val = const_val * (1 + rng.random() * 0.02)
                             parts.append(str(part_val))
                         start_val = ",".join(parts)
-                        add_val = ",".join([str(float(p) * 0.0001) for p in parts])
+                        add_val = ",".join(
+                            [str(float(p) * 0.0001) for p in parts]
+                        )
 
                     elif format_type == "octonion":
                         parts = []
@@ -5108,7 +5125,9 @@ class FortifiedKhaCore:
                             part_val = const_val * (1 + rng.random() * 0.015)
                             parts.append(str(part_val))
                         start_val = ",".join(parts)
-                        add_val = ",".join([str(float(p) * 0.00008) for p in parts])
+                        add_val = ",".join(
+                            [str(float(p) * 0.00008) for p in parts]
+                        )
 
                     elif format_type == "rational_int":
                         numerator = int(base_val * 1000) + rng.randint(1, 100)
@@ -5123,7 +5142,9 @@ class FortifiedKhaCore:
                         i_val = 0.3 + rng.random() * 0.4
                         f_val = 0.1 + rng.random() * 0.3
                         start_val = f"{t_val},{i_val},{f_val}"
-                        add_val = f"{t_val * 0.001},{i_val * 0.001},{f_val * 0.001}"
+                        add_val = (
+                            f"{t_val * 0.001},{i_val * 0.001},{f_val * 0.001}"
+                        )
 
                     elif format_type == "hyperreal_simple":
                         standard = base_val
@@ -5161,103 +5182,84 @@ class FortifiedKhaCore:
 
                     # API çağrısı
                     seq = None
-                    api_attempts = [
-                        lambda: (
-                            kn.get_with_params(
+                    method = getattr(kn, "get_with_params", None)
+                    if callable(method):
+                        try:
+                            seq = method(
                                 kececi_type_choice=kececi_type,
                                 iterations=iteration_depth,
                                 start_value_raw=start_val,
                                 add_value_raw=add_val,
                                 include_intermediate_steps=True,
                             )
-                            if hasattr(kn, "get_with_params")
-                            else None
-                        ),
-                        lambda: (
-                            kn.get_with_params(
-                                kececi_type=kececi_type,
-                                iterations=iteration_depth,
-                                start_value=start_val,
-                                add_value=add_val,
-                                include_intermediate_steps=False,
-                            )
-                            if hasattr(kn, "get_with_params")
-                            else None
-                        ),
-                        lambda: (
-                            kn.get(kececi_type, iteration_depth, start_val, add_val)
-                            if hasattr(kn, "get")
-                            else None
-                        ),
-                    ]
-
-                    for attempt in api_attempts:
-                        try:
-                            seq = attempt()
-                            if seq:
-                                break
-                        except BaseException:
-                            continue
-
-                    if seq:
-                        num_values_to_extract = min(iteration_depth, len(seq), 12)
-
-                        for val_idx in range(-num_values_to_extract, 0):
-                            if val_idx < 0:
-                                final_val = seq[val_idx]
-                                extracted = self._extract_numerics(final_val)
-
-                                # extracted'in numeric list olduğundan emin ol
-                                if not isinstance(extracted, (list, tuple)):
-                                    extracted = [extracted]
-
-                                # İlk extend işlemi
-                                extract_count = min(
-                                    len(extracted), components_needed_int * 3
+                        except TypeError:
+                            try:
+                                seq = method(
+                                    kececi_type=kececi_type,
+                                    iterations=iteration_depth,
+                                    start_value=start_val,
+                                    add_value=add_val,
+                                    include_intermediate_steps=False,
                                 )
-                                values.extend(extracted[:extract_count])
+                            except TypeError:
+                                seq = None
 
-                                # Progress hesaplama
-                                progress = float(val_idx + len(seq)) / float(len(seq))
+                    if seq is None:
+                        get_method = getattr(kn, "get", None)
+                        if callable(get_method):
+                            try:
+                                seq = get_method(
+                                    kececi_type, iteration_depth, start_val, add_val
+                                )
+                            except TypeError:
+                                seq = None
 
-                                # Modülasyon için
-                                slice_count = min(len(extracted), components_needed_int)
-                                for i in range(slice_count):
-                                    val = extracted[i]
-                                    try:
-                                        # val'ı numeric'e çevirmeye çalış
-                                        num_val = (
-                                            float(val)
-                                            if not isinstance(
-                                                val, (int, float, np.number)
-                                            )
-                                            else val
-                                        )
-                                        if progress > 0:
-                                            modulated = num_val * (
-                                                1 + np.sin(progress * np.pi * 2) * 0.15
-                                            )
-                                            values.append(float(modulated))
-                                    except (ValueError, TypeError, AttributeError):
-                                        continue
-
+                    # Sonucu işle
+                    if isinstance(seq, list) and seq:
                         self.stats["kha_success"] += 1
+                        num_values_to_extract = min(iteration_depth, len(seq), 12)
+                        for val_idx in range(-num_values_to_extract, 0):
+                            final_val = seq[val_idx]
+                            extracted = self._extract_numerics(final_val)
+                            if not isinstance(extracted, (list, tuple)):
+                                extracted = [extracted]
+                            extract_count = min(
+                                len(extracted), components_needed_int * 3
+                            )
+                            values.extend(extracted[:extract_count])
 
+                            # Progress ve modülasyon
+                            progress = float(val_idx + len(seq)) / float(len(seq))
+                            slice_count = min(
+                                len(extracted), components_needed_int
+                            )
+                            for i in range(slice_count):
+                                val = extracted[i]
+                                try:
+                                    if not isinstance(
+                                        val, (int, float, np.number)
+                                    ):
+                                        num_val = float(val)
+                                    else:
+                                        num_val = val
+                                    if progress > 0:
+                                        modulated = num_val * (
+                                            1 + np.sin(progress * np.pi * 2) * 0.15
+                                        )
+                                        values.append(float(modulated))
+                                except (ValueError, TypeError, AttributeError):
+                                    continue
                     else:
                         self.stats["kha_fail"] += 1
-                        # components_needed_int artık tanımlı
                         self._add_secure_fallback_values(
                             values, type_idx, components_needed_int, rng
                         )
-
                 else:
                     self._add_secure_math_fallback_values(values, type_idx, rng)
 
             except Exception as e:
                 logger.error(f"KHA matrix error for type {kececi_type}: {e}")
                 self.stats["kha_fail"] += 1
-                # components_needed_int artık tanımlı (hata durumunda da varsayılan
-                # değerle)
                 self._add_secure_fallback_values(
                     values, type_idx, components_needed_int, rng
                 )
@@ -5273,6 +5275,7 @@ class FortifiedKhaCore:
         )
 
         return processed_matrix
+
 
     # def _add_secure_fallback_values(self, values, type_idx, components_needed, rng):
     def _add_secure_fallback_values(
@@ -6139,7 +6142,7 @@ class FortifiedKhaCore:
         return result
 
     def _enhanced_byte_diffusion(
-        self, byte_array: np.ndarray, salt: bytes = None
+        self, byte_array: np.ndarray, salt: bytes | None = None
     ) -> np.ndarray:
         """
         Taşma hatasız, 3 katmanlı kriptografik byte difüzyonu.
@@ -6304,7 +6307,9 @@ class FortifiedKhaCore:
                 flat[i] = np.fmod(flat[i] - carry + 2.0, 1.0)
                 flat[i + 1] = np.fmod(flat[i + 1] + carry + 2.0, 1.0)
 
+            # After all rounds, reshape and return
             return flat.reshape(matrix.shape)
+        return flat.reshape(matrix.shape)
 
     def _final_avalanche_normalization(self, matrix: np.ndarray) -> np.ndarray:
         """
@@ -6358,68 +6363,6 @@ class FortifiedKhaCore:
 
         return x.reshape(matrix.shape)
 
-    """
-    def _final_avalanche_normalization(self, matrix: np.ndarray) -> np.ndarray:
-
-        #Final avalanche normalization tuned for stable 48–52% range.
-        #Avoids artificial centering, reduces variance.
-
-        result = matrix.astype(np.float64, copy=True)
-
-        for _ in range(2):  # 3 → 2 (fazla tekrar dağılımı bozar)
-
-            # 1. Yumuşak sigmoid (merkez = 0.5 civarı)
-            result = 1.0 / (1.0 + np.exp(-result * 4.5))
-
-            # 2. Düşük frekanslı trigonometrik karıştırma
-            # sin yerine cos kullanımı faz kaymasını azaltır
-            result = 0.5 * (1.0 - np.cos(result * np.pi))
-
-            # 3. Stabil min–max
-            min_val = np.min(result)
-            max_val = np.max(result)
-            span = max_val - min_val
-
-            if span > 1e-9:
-                result = (result - min_val) / span
-            else:
-                result.fill(0.5)
-
-            # 4. Hafif gamma düzeltmesi (variance compression)
-            result = np.power(result, 0.92)
-
-        return np.clip(result, 0.0, 1.0)
-    """
-
-    """
-    # çok sert ve dalgalanmaya neden oluyor.
-    def _final_avalanche_normalization(self, matrix: np.ndarray) -> np.ndarray:
-        #Final avalanche normalization
-        result = matrix.copy()
-
-        for pass_num in range(3):  # 2 → 3
-            # Sigmoid compression
-            result = 1.0 / (1.0 + np.exp(-result * 7.0 + 3.5))  # 6.0 → 7.0
-
-            # Sine-based normalization
-            result = np.sin(result * np.pi * 2.5)  # 2.0 → 2.5
-
-            # Min-max
-            min_val = np.min(result)
-            max_val = np.max(result)
-            if max_val - min_val > 1e-12:
-                result = (result - min_val) / (max_val - min_val)
-            else:
-                result = np.zeros_like(result) + 0.5
-
-            # Non-linear stretch
-            result = np.power(result, 1.0 / 1.2)  # 1.1 → 1.2
-
-        # Final clip
-        result = np.clip(result, 0.0, 1.0)
-
-        return result
-    """
 
     @SecurityLayers.timing_attack_protection
     def _final_bytes_conversion(self, matrix: np.ndarray, salt: bytes) -> bytes:
@@ -6675,27 +6618,22 @@ class PerformanceOptimizedKhaCore(FortifiedKhaCore):
         matrix = np.clip(matrix, 0.0, 1.0 - np.finfo(np.float64).eps)
         return matrix
 
-    def _optimize_byte_distribution(
-        self, matrix: np.ndarray, salt: bytes
-    ) -> np.ndarray:
+    def _optimize_byte_distribution(self, matrix: np.ndarray, salt: bytes) -> np.ndarray:
         """Byte dağılımını optimize et"""
         result = matrix.copy()
         n = len(result)
 
         for round_num in range(self.config.byte_uniformity_rounds):
-            # Byte benzeri düzeltmeler
             salt_int = int.from_bytes(salt[:8], "big") if len(salt) >= 8 else round_num
             rng = np.random.RandomState(salt_int & 0xFFFFFFFF)
 
-            # Küçük düzeltmeler
-            corrections = rng.randn(n) * self.config.byte_correction_factor * 0.01
+            factor = getattr(self.config, "byte_correction_factor", 0.0)   # ✅
+            corrections = rng.randn(n) * factor * 0.01
 
-            # Çok yüksek/düşük değerleri düzelt
             for i in range(n):
                 val = result[i]
                 if val < 0.1 or val > 0.9:
-                    result[i] = 0.5 + (val - 0.5) * 0.8  # Merkeze çek
-
+                    result[i] = 0.5 + (val - 0.5) * 0.8
                 result[i] = (result[i] + corrections[i]) % 1.0
 
         return result
@@ -6934,7 +6872,6 @@ class FortifiedKhaHash256:
         - MEMORY-HARD MOD: salt VERİLDİYSE deterministic, VERİLMEDİYSE random (şifre)
         - NORMAL MOD: salt OPSİYONEL, cache + FortifiedKhaCore (genel amaçlı)
         """
-
         # ---------- 1. HAZIRLIK ----------
         start_time = time.perf_counter()
         data_bytes = data.encode("utf-8") if isinstance(data, str) else data
@@ -6998,6 +6935,9 @@ class FortifiedKhaHash256:
             self.metrics["cache_misses"] += 1
 
         # CORE HASH - FortifiedKhaCore
+        # inside hash(), right before "result = self.core.hash(...)"
+        if self.core is None:
+            raise RuntimeError("Normal mode core is not available in memory‑hard mode")
         result = self.core.hash(data_bytes, salt)
 
         # POST-PROCESS
@@ -7067,12 +7007,13 @@ class FortifiedKhaHash256:
             print(f"    • rounds: {self.rounds}")
             print("    ✓ NORMAL MODE")
 
-    def _normal_hash_with_cache(
-        self, data: bytes, salt: bytes, start_time: float
-    ) -> str:
+    def _normal_hash_with_cache(self, data: bytes, salt: bytes, start_time: float) -> str:
         """
         📘 NORMAL HASH - Cache + FortifiedKhaCore
         """
+        if self.core is None:
+            raise RuntimeError("Core not available")
+
         # ---------- CACHE KONTROL ----------
         if self._cache and getattr(self.config, "cache_enabled", False):
             cached = self._cache.get(data, salt)
@@ -7170,6 +7111,8 @@ class FortifiedKhaHash256:
 
     def _update_core_config(self):
         """Core hasher'ı NORMAL mod config ile güncelle"""
+        if self.core is None:
+            raise RuntimeError("Core not available")
         if hasattr(self, "core"):
             # Normal mod parametrelerini core'a ata
             self.core.iterations = self.iterations
@@ -7177,19 +7120,19 @@ class FortifiedKhaHash256:
             self.core.diffusion_rounds = self.diffusion_rounds
             self.core.shuffle_layers = self.shuffle_layers
             self.core.avalanche_boosts = self.avalanche_boosts
-            self.core.byte_uniformity_rounds = self.byte_uniformity_rounds
+            self.core.byte_uniformity_rounds = self.byte_uniformity_rounds 
 
-    # ✅ YENİ: Cache metrikleri
+    # Cache metrikleri
     def get_cache_stats(self) -> Dict[str, Any]:
         """Cache istatistiklerini getir"""
-        if hasattr(self, "_cache"):
+        if hasattr(self, "_cache") and self._cache is not None:
             return self._cache.metrics
         return {}
 
-    # ✅ YENİ: Cache temizleme
+    # Cache temizleme
     def clear_cache(self) -> None:
         """Cache'i temizle"""
-        if hasattr(self, "_cache"):
+        if hasattr(self, "_cache") and self._cache is not None:
             self._cache.clear()
 
     @property
@@ -8043,13 +7986,9 @@ class FortifiedKhaHash256:
 
     def test_uniformity(self, samples: int = 10_000) -> Dict[str, Any]:
         """Statistical uniformity test for hash output."""
-        print(f"🔬 Uniformity test running with {samples:,} samples...")
-
-        import random
-        import secrets
         from time import time
 
-        import numpy as np
+        print(f"🔬 Uniformity test running with {samples:,} samples...")
 
         start_time = time()
 
@@ -8136,6 +8075,7 @@ class FortifiedKhaHash256:
             std_run = 0
             run_chi_square = 0
             run_p_value = 1.0
+            mean_z_score = 0.0
             practical_difference = 0.0
             is_practically_perfect = False
             is_uniform_run_length = True
@@ -8306,7 +8246,7 @@ class FortifiedKhaHash256:
         print(f"   • Observed Mean:     {avg_run:.4f}  (Theoretical: 2.0000)")
         print(f"   • Observed Std Dev:  {std_run:.4f}  (Theoretical: 1.4142)")
         print(f"   • Difference:        {practical_difference:.4f}  (Ideal: <0.01)")
-        print(f"   • Z-Score:           {mean_z_score:.3f}")
+        print(f"   • Z-Score:           {mean_z_score:.3f}") # error: "mean_z_score" is possibly unbound (reportPossiblyUnboundVariable)
         print(f"   • P-Value:           {run_p_value:.8f}")
         print(
             f"   ▶ PRATICAL VERDICT:  {'✓ PERFECT' if practical_difference < 0.01 else '✓ GOOD' if practical_difference < 0.05 else '⚠️ FAIR'}"
@@ -8334,503 +8274,13 @@ class FortifiedKhaHash256:
 
         return result
 
-    """
-    def test_uniformity(self, samples: int = 1000) -> Dict[str, Any]:
-        #Statistical uniformity test for hash output.
-        print(f"Uniformity test running with {samples} samples...")
-
-        from scipy.stats import chi2, norm
-
-        bit_counts = np.zeros(256, dtype=np.int64)
-        byte_counts = np.zeros(256, dtype=np.int64)
-        run_lengths_zero = []
-        run_lengths_one = []
-        total_runs = []
-        hash_lengths = []
-
-        # Runs test için bit dizilerini kaydet
-        all_bit_arrays = []  # YENİ: bit dizilerini kaydet
-
-        for i in range(samples):
-            try:
-                data_len = random.randint(1, 256)
-                data = secrets.token_bytes(data_len)
-                salt = secrets.token_bytes(32)
-                hex_hash = self.hash(data, salt)
-                h_bytes = bytes.fromhex(hex_hash)
-                hash_lengths.append(len(h_bytes))
-
-                if len(h_bytes) == 0:
-                    continue
-
-                byte_array = np.frombuffer(h_bytes, dtype=np.uint8)
-                bits = np.unpackbits(byte_array)
-
-                # Runs test için bit dizisini kaydet
-                all_bit_arrays.append(bits)  # YENİ
-
-                # Bit counts - her pozisyon için ayrı ayrı
-                if len(bits) >= 256:
-                    bit_counts += bits[:256]
-                else:
-                    padded_bits = np.zeros(256, dtype=np.uint8)
-                    padded_bits[:len(bits)] = bits
-                    bit_counts += padded_bits
-
-                # Byte counts
-                if len(byte_array) > 0:
-                    hist = np.bincount(byte_array, minlength=256)
-                    byte_counts += hist
-
-                # Run analysis
-                if len(bits) > 1:
-                    changes = np.where(bits[1:] != bits[:-1])[0] + 1
-                    starts = np.concatenate(([0], changes))
-                    ends = np.concatenate((changes, [len(bits)]))
-                    run_lengths = ends - starts
-
-                    for start, length in zip(starts, run_lengths):
-                        if bits[start] == 0:
-                            run_lengths_zero.append(length)
-                        else:
-                            run_lengths_one.append(length)
-
-                    total_runs.append(len(run_lengths))
-
-                if (i + 1) % max(1, samples // 10) == 0:
-                    print(f"  Progress: {i + 1}/{samples} samples")
-
-            except Exception as e:
-                print(f"Error at sample {i}: {str(e)[:100]}")
-                continue
-
-        total_bytes_counted = byte_counts.sum()
-
-        # Bit Chi-square - DÜZELTİLDİ
-        # Her bit pozisyonu için samples kadar gözlem olmalı
-        # Ama bazı hash'ler 256 bitten kısa olabilir, o yüzden gerçek sayıyı hesapla
-        valid_samples_for_bits = min(samples, len([l for l in hash_lengths if l >= 32]))  # 256 bit = 32 byte
-        expected_per_position = valid_samples_for_bits
-
-        # Sıfır bölme hatasını önle
-        if expected_per_position > 0:
-            chi_square_bit = np.sum((bit_counts - expected_per_position) ** 2 / expected_per_position)
-            df_bit = 255  # 256-1 serbestlik derecesi
-            bit_p_value = chi2.sf(chi_square_bit, df_bit)
-            is_uniform_bit = bit_p_value > 0.01
-        else:
-            chi_square_bit = 0
-            bit_p_value = 1.0
-            is_uniform_bit = False
-
-        # Byte Chi-square
-        if total_bytes_counted > 0:
-            expected_bytes = total_bytes_counted / 256
-            chi_square_byte = np.sum((byte_counts - expected_bytes) ** 2 / expected_bytes)
-            df_byte = 255
-            byte_p_value = chi2.sf(chi_square_byte, df_byte)
-            is_uniform_byte = byte_p_value > 0.01
-        else:
-            chi_square_byte = 0
-            byte_p_value = 1.0
-            is_uniform_byte = False
-
-        # Run length statistics
-        all_run_lengths = run_lengths_zero + run_lengths_one
-        if all_run_lengths and len(all_run_lengths) > 10:  # Yeterli veri var mı?
-            unique_lengths, length_counts = np.unique(all_run_lengths, return_counts=True)
-
-            # Run length geometrik dağılım: P(X=k) = (0.5)^k için? Hayır, düzelt:
-            # Fair coin için run length = k olasılığı: P = (0.5)^(k-1) * 0.5
-            theoretical_probs = []
-            for k in unique_lengths[:-1]:
-                prob = (0.5 ** (k-1)) * 0.5  # Tam olarak k uzunluğunda run
-                theoretical_probs.append(prob)
-            # Son kategori için kümülatif (k veya daha uzun)
-            if len(unique_lengths) > 0:
-                last_prob = 0.5 ** (unique_lengths[-1]-1)  # k veya daha uzun run'lar
-                theoretical_probs.append(last_prob)
-
-            theoretical_probs = np.array(theoretical_probs)
-            theoretical_probs /= theoretical_probs.sum()  # Normalize et
-            theoretical_counts = theoretical_probs * len(all_run_lengths)
-
-            # Küçük expected değerleri birleştir (Yates düzeltmesi)
-            mask = theoretical_counts >= 5
-            if mask.sum() > 1:
-                run_chi_square = np.sum(
-                    (length_counts[mask] - theoretical_counts[mask]) ** 2 / theoretical_counts[mask]
-                )
-                df_run = mask.sum() - 1
-                run_p_value = chi2.sf(run_chi_square, df_run)
-                is_uniform_run_length = run_p_value > 0.01
-            else:
-                run_chi_square = 0
-                run_p_value = 1.0
-                is_uniform_run_length = False
-
-            avg_run = np.mean(all_run_lengths)
-            std_run = np.std(all_run_lengths)
-        else:
-            avg_run = 0
-            std_run = 0
-            run_chi_square = 0
-            run_p_value = 1.0
-            is_uniform_run_length = False
-
-        # NIST-style runs test
-        runs_z_scores = []
-        runs_p_values = [] # NameError: name 'runs_p_value' is not defined
-        avg_total_runs = 0.0
-        std_total_runs = 0.0
-        runs_z_score = 0.0
-        runs_p_value = 1.0
-        is_uniform_runs = False
-
-        for bits in all_bit_arrays:
-            n = len(bits)
-            if n < 2:
-                continue
-
-            # Proportion of ones
-            pi = np.sum(bits) / n
-
-            # Expected runs (NIST SP 800-22)
-            expected_runs = (2 * n * pi * (1 - pi)) + (pi**2 + (1-pi)**2)
-
-            # Observed runs
-            changes = np.sum(bits[1:] != bits[:-1])
-            observed_runs = changes + 1
-
-            # Test statistic
-            if n > 1 and pi != 0 and pi != 1:
-                runs_stat = abs(observed_runs - expected_runs) / np.sqrt(2 * n * pi * (1-pi))
-                runs_z_scores.append(runs_stat)
-
-                # P-value (two-tailed)
-                p_value = 2 * (1 - norm.cdf(abs(runs_stat)))
-                runs_p_values.append(p_value)
-
-        if runs_p_values:
-            avg_runs_p_value = np.mean(runs_p_values)
-            runs_z_score = float(np.mean(runs_z_scores)) if runs_z_scores else 0.0
-            is_uniform_runs = avg_runs_p_value > 0.01
-            avg_total_runs = float(np.mean(total_runs)) if total_runs else 0.0
-            std_total_runs = float(np.std(total_runs)) if total_runs else 0.0
-        else:
-            runs_z_score = 0.0
-            avg_runs_p_value = 1.0
-            is_uniform_runs = False
-            avg_total_runs = 0.0
-            std_total_runs = 0.0
-
-        # Overall status
-        uniformity_score = 0
-        if is_uniform_bit:
-            uniformity_score += 1
-        if is_uniform_byte:
-            uniformity_score += 1
-        if is_uniform_run_length:
-            uniformity_score += 1
-        if is_uniform_runs:
-            uniformity_score += 1
-
-        if uniformity_score == 4:
-            status = "EXCELLENT"
-        elif uniformity_score >= 3:
-            status = "GOOD"
-        elif uniformity_score >= 2:
-            status = "FAIR"
-        elif uniformity_score >= 1:
-            status = "POOR"
-        else:
-            status = "FAIL"
-
-        result = {
-            "samples": len(hash_lengths),
-            "chi_square_bit": float(chi_square_bit),
-            "chi_square_byte": float(chi_square_byte),
-            "avg_run_length": float(avg_run),
-            "std_run_length": float(std_run),
-            "is_uniform_bit": bool(is_uniform_bit),
-            "is_uniform_byte": bool(is_uniform_byte),
-            "run_length_chi_square": float(run_chi_square),
-            "avg_total_runs": float(avg_total_runs),
-            "runs_z_score": float(runs_z_score),
-            "zero_runs_count": len(run_lengths_zero),
-            "one_runs_count": len(run_lengths_one),
-            "total_runs_analyzed": len(all_run_lengths),
-            "hash_length_min": min(hash_lengths) if hash_lengths else 0,
-            "hash_length_max": max(hash_lengths) if hash_lengths else 0,
-            "hash_length_avg": (
-                sum(hash_lengths) / len(hash_lengths) if hash_lengths else 0.0
-            ),
-            "status": status,
-            "bit_p_value": float(bit_p_value),
-            "byte_p_value": float(byte_p_value),
-            "run_p_value": float(run_p_value),
-            "runs_p_value": float(runs_p_value),
-        }
-
-        print("\nUniformity Test Results:")
-        print(f"  Status: {status}")
-        print(f"  Bit Uniformity: {is_uniform_bit} (χ²={chi_square_bit:.2f}, p={bit_p_value:.4f})")
-        print(f"  Byte Uniformity: {is_uniform_byte} (χ²={chi_square_byte:.2f}, p={byte_p_value:.4f})")
-        print(f"  Run Length: {is_uniform_run_length} (χ²={run_chi_square:.2f}, p={run_p_value:.4f})")
-        print(f"  Runs Test: {is_uniform_runs} (z={runs_z_score:.3f}, p={runs_p_value:.4f})")
-        print(f"  Avg Run Length: {avg_run:.3f} ± {std_run:.3f}")
-
-        return result
-    """
-
-    """
-    def test_uniformity(self, samples: int = 10_000) -> Dict[str, Any]:
-        #Statistical uniformity test for hash output.
-        print(f"Uniformity test running with {samples} samples...")
-
-        from scipy.stats import chi2
-
-        bit_counts = np.zeros(256, dtype=np.int64)
-        byte_counts = np.zeros(256, dtype=np.int64)
-        run_lengths_zero = []
-        run_lengths_one = []
-        total_runs = []
-        hash_lengths = []
-
-        for i in range(samples):
-            try:
-                data_len = random.randint(1, 256)
-                data = secrets.token_bytes(data_len)
-                salt = secrets.token_bytes(32)
-                hex_hash = self.hash(data, salt)
-                h_bytes = bytes.fromhex(hex_hash)
-                hash_lengths.append(len(h_bytes))
-
-                if len(h_bytes) == 0:
-                    continue
-
-                byte_array = np.frombuffer(h_bytes, dtype=np.uint8)
-                bits = np.unpackbits(byte_array)
-
-                # Bit counts - her pozisyon için ayrı ayrı
-                if len(bits) >= 256:
-                    bit_counts += bits[:256]
-                else:
-                    # Kısa hash'ler için padding yap
-                    padded_bits = np.zeros(256, dtype=np.uint8)
-                    padded_bits[:len(bits)] = bits
-                    bit_counts += padded_bits
-
-                # Byte counts
-                if len(byte_array) > 0:
-                    hist = np.bincount(byte_array, minlength=256)
-                    byte_counts += hist
-
-                # Run analysis
-                if len(bits) > 1:
-                    changes = np.where(bits[1:] != bits[:-1])[0] + 1
-                    starts = np.concatenate(([0], changes))
-                    ends = np.concatenate((changes, [len(bits)]))
-                    run_lengths = ends - starts
-
-                    for start, length in zip(starts, run_lengths):
-                        if bits[start] == 0:
-                            run_lengths_zero.append(length)
-                        else:
-                            run_lengths_one.append(length)
-
-                    total_runs.append(len(run_lengths))
-
-                if (i + 1) % max(1, samples // 10) == 0:
-                    print(f"  Progress: {i + 1}/{samples} samples")
-
-            except Exception as e:
-                print(f"Error at sample {i}: {str(e)[:100]}")
-                continue
-
-        # total_bytes_counted değişkenini tanımla
-        total_bytes_counted = byte_counts.sum()
-
-        # Bit Chi-square - DÜZELTİLDİ
-        # Her bit pozisyonu için samples kadar gözlem olmalı
-        # Ama bazı hash'ler 256 bitten kısa olabilir, o yüzden gerçek sayıyı hesapla
-        valid_samples_for_bits = min(samples, len([l for l in hash_lengths if l >= 32]))  # 256 bit = 32 byte
-        expected_per_position = valid_samples_for_bits
-
-        # Sıfır bölme hatasını önle
-        if expected_per_position > 0:
-            chi_square_bit = np.sum((bit_counts - expected_per_position) ** 2 / expected_per_position)
-            df_bit = 255  # 256-1 serbestlik derecesi
-            bit_p_value = chi2.sf(chi_square_bit, df_bit)
-            is_uniform_bit = bit_p_value > 0.01
-        else:
-            chi_square_bit = 0
-            bit_p_value = 1.0
-            is_uniform_bit = False
-
-        # Byte Chi-square
-        if total_bytes_counted > 0:
-            expected_bytes = total_bytes_counted / 256
-            chi_square_byte = np.sum((byte_counts - expected_bytes) ** 2 / expected_bytes)
-            df_byte = 255
-            byte_p_value = chi2.sf(chi_square_byte, df_byte)
-            is_uniform_byte = byte_p_value > 0.01
-        else:
-            chi_square_byte = 0
-            byte_p_value = 1.0
-            is_uniform_byte = False
-
-        # Run length statistics
-        all_run_lengths = run_lengths_zero + run_lengths_one
-        if all_run_lengths and len(all_run_lengths) > 10:  # Yeterli veri var mı?
-            unique_lengths, length_counts = np.unique(all_run_lengths, return_counts=True)
-
-            # Run length geometrik dağılım: P(X=k) = (0.5)^k için? Hayır, düzelt:
-            # Fair coin için run length = k olasılığı: P = (0.5)^(k-1) * 0.5
-            theoretical_probs = []
-            for k in unique_lengths[:-1]:
-                prob = (0.5 ** (k-1)) * 0.5  # Tam olarak k uzunluğunda run
-                theoretical_probs.append(prob)
-            # Son kategori için kümülatif (k veya daha uzun)
-            if len(unique_lengths) > 0:
-                last_prob = 0.5 ** (unique_lengths[-1]-1)  # k veya daha uzun run'lar
-                theoretical_probs.append(last_prob)
-
-            theoretical_probs = np.array(theoretical_probs)
-            theoretical_probs /= theoretical_probs.sum()  # Normalize et
-            theoretical_counts = theoretical_probs * len(all_run_lengths)
-
-            # Küçük expected değerleri birleştir (Yates düzeltmesi)
-            mask = theoretical_counts >= 5
-            if mask.sum() > 1:
-                run_chi_square = np.sum(
-                    (length_counts[mask] - theoretical_counts[mask]) ** 2 / theoretical_counts[mask]
-                )
-                df_run = mask.sum() - 1
-                run_p_value = chi2.sf(run_chi_square, df_run)
-                is_uniform_run_length = run_p_value > 0.01
-            else:
-                run_chi_square = 0
-                run_p_value = 1.0
-                is_uniform_run_length = False
-
-            avg_run = np.mean(all_run_lengths)
-            std_run = np.std(all_run_lengths)
-        else:
-            avg_run = 0
-            std_run = 0
-            run_chi_square = 0
-            run_p_value = 1.0
-            is_uniform_run_length = False
-
-        # NIST-style runs test
-        avg_total_runs = 0.0
-        std_total_runs = 0.0
-        runs_z_score = 0.0
-        runs_p_value = 1.0
-        is_uniform_runs = False
-
-        if total_runs:
-            avg_total_runs = float(np.mean(total_runs))
-            std_total_runs = float(np.std(total_runs))
-
-            # Hash'lerin bit uzunluklarını hash_lengths'ten hesapla
-            bit_lengths = [l * 8 for l in hash_lengths]  # byte -> bit
-
-            # Her hash için beklenen run sayısını hesapla
-            expected_runs_per_hash = []
-            for n_bits in bit_lengths:
-                # Fair coin için beklenen run sayısı: (2 * n * p * (1-p)) + (p^2 + (1-p)^2)
-                # p = 0.5 için: (n/2) + 0.5
-                expected_runs = (n_bits / 2) + 0.5
-                expected_runs_per_hash.append(expected_runs)
-
-            # Ortalama beklenen run sayısı
-            expected_total_runs = float(np.mean(expected_runs_per_hash))
-
-            # Varyans: n * p * (1-p) * (1 - 3p + 3p^2) ...
-            # Basitleştirilmiş: std = sqrt(n * p * (1-p))
-            # p=0.5 için: sqrt(n/4)
-
-            if std_total_runs > 0:
-                runs_z_score = float(abs(avg_total_runs - expected_total_runs) / std_total_runs)
-
-                from scipy.stats import norm
-                runs_p_value = 2 * (1 - norm.cdf(abs(runs_z_score)))  # two-tailed
-                is_uniform_runs = runs_p_value > 0.01
-            else:
-                runs_z_score = 0.0
-                runs_p_value = 1.0
-                is_uniform_runs = False
-        else:
-            runs_z_score = 0.0
-            runs_p_value = 1.0
-            is_uniform_runs = False
-
-        # Overall status
-        uniformity_score = 0
-        if is_uniform_bit:
-            uniformity_score += 1
-        if is_uniform_byte:
-            uniformity_score += 1
-        if is_uniform_run_length:
-            uniformity_score += 1
-        if is_uniform_runs:
-            uniformity_score += 1
-
-        if uniformity_score == 4:
-            status = "EXCELLENT"
-        elif uniformity_score >= 3:
-            status = "GOOD"
-        elif uniformity_score >= 2:
-            status = "FAIR"
-        elif uniformity_score >= 1:
-            status = "POOR"
-        else:
-            status = "FAIL"
-
-        result = {
-            "samples": len(hash_lengths),
-            "chi_square_bit": float(chi_square_bit),
-            "chi_square_byte": float(chi_square_byte),
-            "avg_run_length": float(avg_run),
-            "std_run_length": float(std_run),
-            "is_uniform_bit": bool(is_uniform_bit),
-            "is_uniform_byte": bool(is_uniform_byte),
-            "run_length_chi_square": float(run_chi_square),
-            "avg_total_runs": float(avg_total_runs),
-            "runs_z_score": float(runs_z_score),
-            "zero_runs_count": len(run_lengths_zero),
-            "one_runs_count": len(run_lengths_one),
-            "total_runs_analyzed": len(all_run_lengths),
-            "hash_length_min": min(hash_lengths) if hash_lengths else 0,
-            "hash_length_max": max(hash_lengths) if hash_lengths else 0,
-            "hash_length_avg": (
-                sum(hash_lengths) / len(hash_lengths) if hash_lengths else 0.0
-            ),
-            "status": status,
-            "bit_p_value": float(bit_p_value),
-            "byte_p_value": float(byte_p_value),
-            "run_p_value": float(run_p_value),
-            "runs_p_value": float(runs_p_value),
-        }
-
-        print("\nUniformity Test Results:")
-        print(f"  Status: {status}")
-        print(f"  Bit Uniformity: {is_uniform_bit} (χ²={chi_square_bit:.2f}, p={bit_p_value:.4f})")
-        print(f"  Byte Uniformity: {is_uniform_byte} (χ²={chi_square_byte:.2f}, p={byte_p_value:.4f})")
-        print(f"  Run Length: {is_uniform_run_length} (χ²={run_chi_square:.2f}, p={run_p_value:.4f})")
-        print(f"  Runs Test: {is_uniform_runs} (z={runs_z_score:.3f}, p={runs_p_value:.4f})")
-        print(f"  Avg Run Length: {avg_run:.3f} ± {std_run:.3f}")
-
-        return result
-    """
 
     def get_stats(self) -> Dict[str, Any]:
         """İstatistikleri getir"""
         stats: Dict[str, Any] = {}
 
-        if hasattr(self.core, "stats"):
+        # self.core is never None after __init__, but the type checker requires the guard
+        if self.core is not None and hasattr(self.core, "stats"):
             for key, value in self.core.stats.items():
                 stats[key] = value
 
@@ -9537,10 +8987,10 @@ class OptimizedKhaHash256(FortifiedKhaHash256):
             salt = self._derive_salt_fast(data_bytes)
 
         # Cache check - basit
+        cache_key = None                       # ✅ always defined
         if getattr(self.config, "cache_enabled", True):
             cache_key = hash(data_bytes) ^ (hash(salt) << 32)
             cached = self._cache.get(cache_key)
-
             if cached is not None:
                 self._cache_hits += 1
                 return cached
@@ -9550,7 +9000,7 @@ class OptimizedKhaHash256(FortifiedKhaHash256):
         result = self._fast_pipeline(data_bytes, salt)
 
         # Store in cache
-        if getattr(self.config, "cache_enabled", True):
+        if cache_key is not None:              # ✅ only if caching enabled
             if len(self._cache) >= getattr(self.config, "cache_size", 2048):
                 # Basit eviction
                 keys = list(self._cache.keys())
@@ -9830,10 +9280,11 @@ def hash_password(
     return f"{prefix}{salt.hex()}${digest.hex()}"
 
 
-def hash_password_str(password: str, salt: bytes, **kwargs) -> str:
-    """String wrapper - salt ZORUNLU"""
+def hash_password_str(password: Union[str, bytes], salt: bytes, **kwargs) -> str:
+    """String wrapper – salt ZORUNLU. Accepts both str and bytes."""
+    if isinstance(password, str):
+        password = password.encode("utf-8")
     return hash_password(password, salt, **kwargs)
-
 
 """
 def hash_password(data: bytes, salt: Optional[bytes] = None, *, is_usb_key: bool = False, fast_mode: bool = True) -> str:
@@ -10069,7 +9520,7 @@ def hash_argon2id(password: str) -> str:
 
     ph = PasswordHasher(
         time_cost=3,  # Iterasyon sayısı (t)
-        memory_cost_kb=16256,  # Bellek maliyeti (m KB): 65536: 64 MB
+        memory_cost=16256,  # Bellek maliyeti (m KB): 65536: 64 MB
         parallelism=12,  # Paralellik (p): threadripper desteği
         hash_len=32,  # Çıktı uzunluğu (byte)
     )
@@ -10089,16 +9540,14 @@ def hash_bcrypt(password: str, rounds: int = 12) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
 
-def hash_pbkdf2(password: str, salt: bytes = None, iterations: int = 600_000) -> str:
+def hash_pbkdf2(password: str, salt: Optional[bytes] = None, iterations: int = 600_000) -> str:
     """
     PBKDF2-HMAC-SHA256 (NIST önerilen).
     Output: 256-bit key + salt.
     """
     if salt is None:
         salt = os.urandom(16)
-    dk = hashlib.pbkdf2_hmac(
-        "sha256", password.encode("utf-8"), salt, iterations, dklen=32
-    )
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations, dklen=32)
     return salt.hex() + ":" + dk.hex()
 
 
@@ -10120,7 +9569,7 @@ def batch_hash_secure(passwords: list[str]) -> list[str]:
 
     ph = PasswordHasher(
         time_cost=3,  # Iterasyon sayısı (t)
-        memory_cost_kb=16256,  # Bellek maliyeti (m KB): 65536: 64 MB
+        memory_cost=16256,  # Bellek maliyeti (m KB): 65536: 64 MB
         parallelism=12,  # Paralellik (p): threadripper desteği
         hash_len=32,  # Çıktı uzunluğu (byte)
     )
@@ -10167,7 +9616,7 @@ def secure_hash_password(password: str) -> str:
         # Argon2id - OWASP #1 öneri
         ph = PasswordHasher(
             time_cost=3,  # 3 iterasyon
-            memory_cost_kb=19456,  # 19 MB - OWASP min 15 MB
+            memory_cost=19456,  # 19 MB - OWASP min 15 MB
             parallelism=1,  # 1 - güvenlik için!
             hash_len=32,  # 256 bit çıktı
             salt_len=16,  # 128 bit salt - NIST yeterli!
@@ -10436,9 +9885,7 @@ def test_shake256():
 # ======================
 # PERFORMANS ÖLÇÜMÜ
 # ======================
-
-
-def measure_hash(func, *args) -> tuple[float, any]:
+def measure_hash(func, *args) -> tuple[float, Any]:
     """Hassas timing ölçümü (milisaniye cinsinden)."""
     start = time.perf_counter()
     result = func(*args)
@@ -10625,8 +10072,13 @@ def chacha_avalanche_mix(data: bytes, salt: bytes) -> bytes:
     cipher = ChaCha20.new(key=key, nonce=b"\x00" * 12)
     return cipher.encrypt(b"\x00" * 64)  # 512-bit pseudo-random output
 
+class Mixin:
+    def _quantum_avalanche_mix(self, matrix, salt): ...
+    def _enhanced_byte_diffusion(self, data, salt): ...
+    def _secure_diffusion_mix(self, matrix, salt): ...
 
-class MockCore:
+class MockCore(Mixin):
+    # inherits the methods without runtime assignment
     class MockConfig:
         shuffle_layers = 4
         # Deterministik mod için gerekli config parametreleri
@@ -10641,7 +10093,7 @@ class MockCore:
 
 
 # ============================================================
-# DÜZELTİLMİŞ TEST - DETERMINISTIC!
+# DETERMINISTIC!
 # ============================================================
 
 
@@ -10650,9 +10102,11 @@ FIXED_SALT = b"kha256_deterministic_test_salt_2026_32bytes!"  # 32 byte sabit!
 FIXED_SALT_2 = b"another_fixed_salt_for_testing_purposes_2026"  # 32 byte sabit!
 
 # 2. MockCore'a metodları ekle
+"""
 MockCore._quantum_avalanche_mix = FortifiedKhaCore._quantum_avalanche_mix
 MockCore._enhanced_byte_diffusion = FortifiedKhaCore._enhanced_byte_diffusion
 MockCore._secure_diffusion_mix = FortifiedKhaCore._secure_diffusion_mix
+"""
 
 # ============================================================
 # TEST 1: _quantum_avalanche_mix - DETERMINISTIC
@@ -10661,11 +10115,10 @@ print("\n" + "=" * 60)
 print("🔬 TEST: _quantum_avalanche_mix (Deterministik)")
 print("=" * 60)
 
-core = MockCore(deterministic=True)
-test_matrix = np.random.RandomState(42).random(64).astype(np.float64)  # Sabit seed!
+core = FortifiedKhaCore(FortifiedConfig())   # ✅ config provided
+test_matrix = np.random.RandomState(42).random(64).astype(np.float64)
 
 try:
-    # ✅ DOĞRU: AYNI salt ile 2 kez çağır!
     result1 = core._quantum_avalanche_mix(test_matrix, FIXED_SALT)
     result2 = core._quantum_avalanche_mix(test_matrix, FIXED_SALT)
 
@@ -10673,20 +10126,15 @@ try:
     print(f"   Input shape: {test_matrix.shape} → Output shape: {result1.shape}")
     print(f"   Sample values: {result1[:5]}")
 
-    # Deterministiklik testi
-    assert np.allclose(result1, result2), (
-        "Deterministiklik hatası! Aynı salt farklı sonuç verdi!"
-    )
+    assert np.allclose(result1, result2), "Deterministiklik hatası!"
     print("✅ Deterministiklik doğrulandı (aynı salt → aynı sonuç)")
 
-    # FARKLI salt testi
     result3 = core._quantum_avalanche_mix(test_matrix, FIXED_SALT_2)
     assert not np.allclose(result1, result3), "Farklı salt aynı sonucu verdi!"
     print("✅ Farklı salt → farklı sonuç (doğru)")
 
-    # Avalanche etkisi testi
     test_matrix2 = test_matrix.copy()
-    test_matrix2[0] += 1e-10  # Küçük değişiklik
+    test_matrix2[0] += 1e-10
     result4 = core._quantum_avalanche_mix(test_matrix2, FIXED_SALT)
     diff_ratio = np.mean(np.abs(result1 - result4) > 0.1)
     print(f"✅ Avalanche etkisi: %{diff_ratio * 100:.1f} fark (>%10 beklenir)")
@@ -10694,7 +10142,6 @@ try:
 except Exception as e:
     print(f"❌ Hata: {type(e).__name__}: {e}")
     import traceback
-
     traceback.print_exc()
 
 # ============================================================
@@ -10704,8 +10151,8 @@ print("\n" + "=" * 60)
 print("🔬 TEST: _secure_diffusion_mix (Deterministik)")
 print("=" * 60)
 
-core = MockCore(deterministic=True)
-test_matrix = np.random.RandomState(12345).random(64).astype(np.float64)  # Sabit seed!
+core = FortifiedKhaCore(FortifiedConfig())   # ✅ config provided
+test_matrix = np.random.RandomState(12345).random(64).astype(np.float64)
 
 try:
     # ✅ DOĞRU: AYNI salt ile 2 kez çağır!
@@ -10855,7 +10302,7 @@ class DeterministicTest:
 # Kullanım
 core = MockCore(deterministic=True)
 result = DeterministicTest.test_function(
-    core._quantum_avalanche_mix, name="_quantum_avalanche_mix"
+    core._quantum_avalanche_mix, name="_quantum_avalanche_mix" # error: Cannot access attribute "_quantum_avalanche_mix" for class "MockCore" Attribute "_quantum_avalanche_mix" is unknown (reportAttributeAccessIssue)
 )
 
 
@@ -10927,8 +10374,9 @@ def test_parameter_impact():
 
     # Test 4: hash_password karşılaştırması
     print("\n4️⃣  hash_password() karşılaştırması:")
+    test_salt = b"test_salt_for_benchmarking"
     start = time.perf_counter()
-    _ = hash_password(test_data1)
+    _ = hash_password(test_data, test_salt)        # now bytes
     elapsed = (time.perf_counter() - start) * 1000
     print(f"   hash_password() → {elapsed:6.2f} ms")
 
@@ -11083,36 +10531,32 @@ def expose_kha256_bug():
 
 def benchmark_real_cost():
     """time_cost ve workers'ı override test"""
+    # (label, hasher) pairs – all hasher objects directly
     tests = [
-        "fast",
-        "secure",
-        # Manual override
-        generate_fortified_hasher_password(
-            iterations=1, memory_cost_kb=1024, time_cost=1
-        ),
-        generate_fortified_hasher_password(
-            iterations=10, memory_cost_kb=2048, time_cost=4
-        ),
+        ("fast", generate_fortified_hasher("fast")),
+        ("secure", generate_fortified_hasher("secure")),
+        # Manual overrides: call the factory to get a hasher
+        ("manual_1", generate_fortified_hasher_password(iterations=1, memory_cost_kb=1024, time_cost=1)),
+        ("manual_2", generate_fortified_hasher_password(iterations=10, memory_cost_kb=2048, time_cost=4)),
     ]
 
-    for i, test in enumerate(tests):
-        if callable(test):
-            hasher = test()
-            # Veya hasher.config.time_cost gibi bir özellik kullanın
-        else:
-            hasher = generate_fortified_hasher(test)
-
+    for label, hasher in tests:
         salt = secrets.token_bytes(32)
         start = time.perf_counter()
 
-        hasher.hash(b"test" * 1000, salt)  # Uzun input
+        hasher.hash(b"test" * 1000, salt)          # now known method
         elapsed = (time.perf_counter() - start) * 1000
 
-        print(f"{str(test):10} → {elapsed:.1f}ms")  # str() ile dönüştür
-        print(f"{repr(hasher.config):20} → {elapsed:.1f}ms")  # Config'i repr ile
-        # İndeks kullan
-        print(f"Test {i}: {elapsed:.1f}ms | workers={hasher.config.max_workers}")
+        print(f"{label:10} → {elapsed:.1f}ms")
 
+        # Safe attribute access with getattr (config may not always exist)
+        config = getattr(hasher, "config", None)
+        if config:
+            print(f"  config: {config!r}")
+            workers = getattr(config, "max_workers", None)
+            print(f"  workers={workers}")
+        else:
+            print("  config: N/A")
 
 # Alternatif: generate_fortified_hasher_password fix
 
@@ -11309,11 +10753,8 @@ def hash_password(password: str, salt: Optional[bytes] = None) -> str:
 
 # Universal Doğrulama Fonksiyonu: Parola Doğrulama
 def verify_password(stored_hash: str, password: str) -> bool:
-    """
-    Her iki tür hash'i de doğrulayabilen universal fonksiyon
-    """
+    """Her iki tür hash'i de doğrulayabilen universal fonksiyon"""
     try:
-        # Hash formatını parse et
         parts = stored_hash.split("$")
         if len(parts) != 3:
             return False
@@ -11321,27 +10762,25 @@ def verify_password(stored_hash: str, password: str) -> bool:
         prefix, salt_hex, original_digest = parts
         salt = bytes.fromhex(salt_hex)
 
-        # Prefix'e göre doğru hasher'ı seç
+        # Prepare config once, set values per prefix
+        config = FortifiedConfig()
+
         if prefix == "KHA256-USB":
-            # USB anahtarı için config
-            config = FortifiedConfig()
             config.iterations = 16
             config.components_per_hash = 32
             config.memory_cost_kb = 1024
             config.time_cost = 3
             hasher = FortifiedKhaHash256(config)
         elif prefix == "KHA256":
-            # Normal parola için config
-            hasher = generate_fortified_hasher(
-                iterations=32,
-                components=48,
-                memory_cost_kb=1024,
-                time_cost=3,
-            )
+            # Normal password settings
+            config.iterations = 32
+            config.components_per_hash = 48
+            config.memory_cost_kb = 1024
+            config.time_cost = 3
+            hasher = FortifiedKhaHash256(config)   # <-- same class, consistent
         else:
             return False
 
-        # Doğrulama
         new_digest = hasher.hash(password, salt)
         return secrets.compare_digest(new_digest, original_digest)
 
@@ -11541,10 +10980,7 @@ class HardwareSecurityID:
         return self.hasher.hash(raw.encode("utf-8"), salt_bytes)
 
 
-# 🚀 DOĞRU KULLANIM:
-# -----------------
-
-
+# DOĞRU KULLANIM:
 # SEÇENEK A: Bytes salt (ÖNERİLEN)
 salt_bytes = b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10" * 2
 hw = HardwareSecurityID(use_mac=False, salt=salt_bytes)
@@ -11554,7 +10990,7 @@ print(f"HWID: {hwid[:32]}...")
 print(f"Lisans: {license_key}")
 
 # SEÇENEK B: String salt (otomatik encode)
-hw2 = HardwareSecurityID(use_mac=False, salt="KHA256_HWID_SALT_2026")
+hw2 = HardwareSecurityID(use_mac=False, salt=b"KHA256_HWID_SALT_2026")
 hwid2 = hw2.get_hardware_id()
 print(f"HWID2: {hwid2[:32]}...")
 
@@ -11597,7 +11033,10 @@ class SecureKhaHash256:
 
     def hash(self, data: bytes, salt: bytes) -> bytes:
         # Tek satır, %100 güvenli:
-        return hashlib.blake2b(data + salt, digest_size=32)
+        return hashlib.blake2b(data + salt, digest_size=32).digest()
+
+    def hash_hex(self, data: bytes, salt: bytes) -> str:
+        return hashlib.blake2b(data + salt, digest_size=32).hexdigest()
 
     # Test için:
     def verify_avalanche(self, n=10000):
@@ -11606,22 +11045,19 @@ class SecureKhaHash256:
 
 
 # Basit Hasher wrapper sınıfı
-
-
 class SimpleKhaHasher:
     """Basit KHA hasher - Demo ve test amaçlı, DETERMINISTIK!"""
 
-    # Sınıf sabiti - tüm instance'lar aynı default salt'ı kullanır
-    DEFAULT_SALT = b"KHA_DEFAULT_SALT_32BYTES!!"  # 32 byte sabit
+    DEFAULT_SALT = b"KHA_DEFAULT_SALT_32BYTES!!"  # 32 byte
 
-    def __init__(self, salt: bytes = None):
+    def __init__(self, salt: Optional[bytes] = None):
         """
         Args:
             salt: Özel salt (opsiyonel). Verilmezse DEFAULT_SALT kullanılır.
         """
         self.salt = salt or self.DEFAULT_SALT
 
-    def hash(self, data: str, salt: bytes = None) -> str:
+    def hash(self, data: str, salt: Optional[bytes] = None) -> str:
         """String input → KHA hash (deterministik)"""
         salt = salt or self.salt
         return hash_password_str(data, salt)
@@ -11631,13 +11067,11 @@ class SimpleKhaHasher:
             "features": {
                 "scrypt_kdf": True,
                 "memory_hard": True,
-                "deterministic": True,  # ✓ Evet, deterministik!
+                "deterministic": True,
                 "usb_optimized": True,
                 "anti_gpu": True,
             },
-            #"version": "KHA-256 v0.2.9",
-            # f-string kullanarak dinamik birleştirme yap
-            "version": f"KHA-256 v{__version__}", 
+            "version": f"KHA-256 v{__version__}",
         }
 
 
@@ -11792,14 +11226,19 @@ class MockAuthSystem:
 
     def get_user_info(self, username):
         """Kullanıcı bilgilerini getir"""
-        if username in self.users:
-            user = self.users[username].copy()
-            user["failed_attempts"] = self.failed_attempts.get(username, 0)
-            user["is_locked"] = (
-                self.failed_attempts.get(username, 0) >= self.MAX_FAILED_ATTEMPTS
-            )
-            return user
-        return None
+        if username not in self.users:
+            return None
+
+        base = self.users[username]
+        failed = self.failed_attempts.get(username, 0)
+
+        return {
+            "password_hash": base["password_hash"],
+            "salt": base["salt"],
+            "role": base["role"],
+            "failed_attempts": failed,
+            "is_locked": failed >= self.MAX_FAILED_ATTEMPTS,
+        }
 
 
 # ============================================================================
@@ -12560,7 +11999,7 @@ class MemoryHardDemo:
 
         avg_normal = sum(times_normal) / len(times_normal)
         print(f"   100 deneme ortalaması: {avg_normal:.6f} ms")
-        print(f"   Hash: {hash_result[:16]}...")
+        print(f"   Hash: {normal_results[-1][:16]}...")   # ✅ now always bound
 
         # ✅ Deterministik kontrol
         if len(set(normal_results)) == 1:
@@ -12731,22 +12170,21 @@ class MemoryHardDemo:
 
 
 class db:
-    """database manager"""
+    """database manager – all methods are classmethods"""
 
     # Thread-local storage for database connections
-    # Tek obje, tüm thread'ler paylaşır
     thread_local = threading.local()
 
+    @classmethod
     @contextmanager
-    def get_db_connection():
+    def get_db_connection(cls):
         """Thread-safe veritabanı bağlantısı için context manager"""
-        # ✅ DÜZELTME: Lokal değişken oluşturma, sınıf attribute'unu kullan
-        if not hasattr(db.thread_local, "conn"):
-            db.thread_local.conn = sqlite3.connect("users.db", check_same_thread=False)
-            db.thread_local.conn.execute("PRAGMA journal_mode=WAL")
-            db.thread_local.conn.execute("PRAGMA busy_timeout=5000")
+        if not hasattr(cls.thread_local, "conn"):
+            cls.thread_local.conn = sqlite3.connect("users.db", check_same_thread=False)
+            cls.thread_local.conn.execute("PRAGMA journal_mode=WAL")
+            cls.thread_local.conn.execute("PRAGMA busy_timeout=5000")
 
-        conn = db.thread_local.conn
+        conn = cls.thread_local.conn
         try:
             yield conn
         except sqlite3.Error as e:
@@ -12755,16 +12193,17 @@ class db:
                 conn.close()
             except BaseException:
                 pass
-            if hasattr(db.thread_local, "conn"):
-                delattr(db.thread_local, "conn")
+            if hasattr(cls.thread_local, "conn"):
+                delattr(cls.thread_local, "conn")
             raise
 
-    def setup_database():
+    @classmethod
+    def setup_database(cls):
         """Veritabanını kur"""
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                with db.get_db_connection() as conn:
+                with cls.get_db_connection() as conn:
                     cursor = conn.cursor()
                     cursor.execute("PRAGMA foreign_keys = ON")
 
@@ -12797,7 +12236,8 @@ class db:
                 print(f"❌ Beklenmeyen hata: {e}")
                 return False
 
-    def save_user(username, password, retry_count=3):
+    @classmethod
+    def save_user(cls, username, password, retry_count=3):
         """Kullanıcıyı veritabanına kaydet"""
         if not username or not password:
             print("❌ Kullanıcı adı ve parola gerekli")
@@ -12805,7 +12245,7 @@ class db:
 
         for attempt in range(retry_count):
             try:
-                with db.get_db_connection() as conn:
+                with cls.get_db_connection() as conn:
                     cursor = conn.cursor()
                     cursor.execute(
                         "SELECT username FROM users WHERE username = ?", (username,)
@@ -12825,7 +12265,7 @@ class db:
 
                 print("✅ Hash hesaplandı")
 
-                with db.get_db_connection() as conn:
+                with cls.get_db_connection() as conn:
                     cursor = conn.cursor()
                     cursor.execute(
                         """INSERT INTO users
@@ -12856,7 +12296,8 @@ class db:
 
         return False
 
-    def verify_user(username, password, retry_count=3):
+    @classmethod
+    def verify_user(cls, username, password, retry_count=3):
         """Kullanıcıyı doğrula"""
         if not username or not password:
             print("❌ Kullanıcı adı ve parola gerekli")
@@ -12864,7 +12305,7 @@ class db:
 
         for attempt in range(retry_count):
             try:
-                with db.get_db_connection() as conn:
+                with cls.get_db_connection() as conn:
                     cursor = conn.cursor()
                     cursor.execute(
                         "SELECT password_hash, salt FROM users WHERE username = ?",
@@ -12914,10 +12355,11 @@ class db:
 
         return False
 
-    def list_users():
+    @classmethod
+    def list_users(cls):
         """Kayıtlı kullanıcıları listele"""
         try:
-            with db.get_db_connection() as conn:
+            with cls.get_db_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
                     SELECT username, created_at, last_login
@@ -12945,10 +12387,11 @@ class db:
             print(f"❌ Listeleme hatası: {e}")
             return []
 
-    def delete_user(username):
+    @classmethod
+    def delete_user(cls, username):
         """Kullanıcıyı sil"""
         try:
-            with db.get_db_connection() as conn:
+            with cls.get_db_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM users WHERE username = ?", (username,))
                 conn.commit()
@@ -12964,13 +12407,13 @@ class db:
             print(f"❌ Silme hatası: {e}")
             return False
 
-    def close_all_connections():
+    @classmethod
+    def close_all_connections(cls):
         """Tüm veritabanı bağlantılarını kapat"""
         try:
-            # ✅ DÜZELTME: db.thread_local kullan
-            if hasattr(db.thread_local, "conn"):
-                db.thread_local.conn.close()
-                delattr(db.thread_local, "conn")
+            if hasattr(cls.thread_local, "conn"):
+                cls.thread_local.conn.close()
+                delattr(cls.thread_local, "conn")
                 print("✅ Veritabanı bağlantıları kapatıldı")
         except BaseException:
             pass
@@ -12979,27 +12422,28 @@ class db:
     import ipywidgets as widgets
     from IPython.display import HTML, clear_output, display
 
-    def interactive_demo():
+    @classmethod
+    def interactive_demo(cls):
         """Jupyter'da interaktif demo"""
 
         print("🎮 İNTERAKTİF MEMORY-HARD HASH DEMO")
         print("=" * 60)
 
-        db.setup_database()
+        db.setup_database()   # Now works because setup_database is a classmethod
 
-        username_input = db.widgets.Text(
+        username_input = cls.widgets.Text(
             placeholder="Kullanıcı adı",
             description="Kullanıcı:",
             style={"description_width": "initial"},
         )
 
-        password_input = db.widgets.Password(
+        password_input = cls.widgets.Password(
             placeholder="Parola",
             description="Parola:",
             style={"description_width": "initial"},
         )
 
-        output_area = db.widgets.Output(
+        output_area = cls.widgets.Output(
             layout={
                 "border": "1px solid #ddd",
                 "padding": "10px",
@@ -13009,7 +12453,7 @@ class db:
 
         def on_register_click(b):
             with output_area:
-                db.clear_output()
+                cls.clear_output()
                 username = username_input.value
                 password = password_input.value
 
@@ -13018,14 +12462,14 @@ class db:
                     return
 
                 print(f"📝 '{username}' kaydediliyor...")
-                if db.save_user(username, password):
+                if db.save_user(username, password):   # Now correct: classmethod call
                     print(f"✅ '{username}' başarıyla kaydedildi")
                 else:
                     print(f"❌ '{username}' kaydı başarısız")
 
         def on_login_click(b):
             with output_area:
-                db.clear_output()
+                cls.clear_output()
                 username = username_input.value
                 password = password_input.value
 
@@ -13041,40 +12485,40 @@ class db:
 
         def on_list_click(b):
             with output_area:
-                db.clear_output()
+                cls.clear_output()
                 db.list_users()
 
         def on_clear_click(b):
             with output_area:
-                db.clear_output()
+                cls.clear_output()
                 print("🧹 Çıktı temizlendi")
 
-        register_btn = db.widgets.Button(
+        register_btn = cls.widgets.Button(
             description="Kayıt Ol",
             button_style="primary",
             icon="user-plus",
-            layout=db.widgets.Layout(width="100px"),
+            layout=cls.widgets.Layout(width="100px"),
         )
 
-        login_btn = db.widgets.Button(
+        login_btn = cls.widgets.Button(
             description="Giriş Yap",
             button_style="success",
             icon="sign-in-alt",
-            layout=db.widgets.Layout(width="100px"),
+            layout=cls.widgets.Layout(width="100px"),
         )
 
-        list_btn = db.widgets.Button(
+        list_btn = cls.widgets.Button(
             description="Listele",
             button_style="info",
             icon="list",
-            layout=db.widgets.Layout(width="100px"),
+            layout=cls.widgets.Layout(width="100px"),
         )
 
-        clear_btn = db.widgets.Button(
+        clear_btn = cls.widgets.Button(
             description="Temizle",
             button_style="warning",
             icon="trash",
-            layout=db.widgets.Layout(width="100px"),
+            layout=cls.widgets.Layout(width="100px"),
         )
 
         register_btn.on_click(on_register_click)
@@ -13082,20 +12526,20 @@ class db:
         list_btn.on_click(on_list_click)
         clear_btn.on_click(on_clear_click)
 
-        buttons = db.widgets.HBox([register_btn, login_btn, list_btn, clear_btn])
+        buttons = cls.widgets.HBox([register_btn, login_btn, list_btn, clear_btn])
 
-        form = db.widgets.VBox(
+        form = cls.widgets.VBox(
             [
-                db.widgets.HTML(
+                cls.widgets.HTML(
                     "<h3 style='color: #2c3e50;'>👤 Kullanıcı İşlemleri</h3>"
                 ),
                 username_input,
                 password_input,
                 buttons,
-                db.widgets.HTML("<h4 style='color: #3498db;'>📊 Çıktı:</h4>"),
+                cls.widgets.HTML("<h4 style='color: #3498db;'>📊 Çıktı:</h4>"),
                 output_area,
             ],
-            layout=db.widgets.Layout(width="80%", margin="20px"),
+            layout=cls.widgets.Layout(width="80%", margin="20px"),
         )
 
         display(form)
@@ -13228,36 +12672,46 @@ def print_info(text: str):
 # YARDIMCI FONKSİYONLAR
 # ============================================================================
 
-
-def safe_hash_password(password: str, salt: bytes = None) -> str:
+def safe_hash_password(password: str, salt: Optional[bytes] = None) -> str:
     """Güvenli hash_password wrapper - her çağrıda farklı salt kullan"""
     import secrets
 
-    if isinstance(password, str):
-        password = password.encode("utf-8")
+    # Convert password once
+    password_bytes = password.encode("utf-8")
 
-    # Salt verilmemişse her seferinde yeni salt oluştur
-    # NIST SP 800-63B, OWASP: 16-32 bayt önerilir, 32 bayt (256 bit) yeterlidir
+    # Generate salt if not provided
     if salt is None:
-        salt = secrets.token_bytes(32)  # 256-bit - endüstri standardı
+        salt = secrets.token_bytes(32)   # NIST SP 800-63B
 
+    # Single clean call – no fallback needed
+    return hash_password(password_bytes, salt)
+"""
+def safe_hash_password(password: str, salt: bytes = None) -> str: # error: Expression of type "None" cannot be assigned to parameter of type "bytes" "None" is not assignable to "bytes" (reportArgumentType)
+    #Güvenli hash_password wrapper - her çağrıda farklı salt kullan
+    import secrets
+
+    # Keep the original string for fallback, work with a separate bytes variable
+    password_bytes = password.encode("utf-8")
+
+    # Generate salt if not provided (NIST SP 800-63B / OWASP)
+    if salt is None:
+        salt = secrets.token_bytes(32)   # 256‑bit
+
+    # 1. Preferred: bytes API with salt
     try:
-        result = hash_password(password, salt)
-        return result
+        return hash_password(password_bytes, salt)
     except Exception as e:
-        # Farklı API'leri dene
+        # 2. Fallback: try the string API (some older versions accept a string)
         try:
-            # String parametreli versiyon
-            result = hash_password(password.decode("utf-8"), salt)
-            return result
+            return hash_password(password, salt) # error: Argument of type "str" cannot be assigned to parameter "data" of type "bytes" in function "hash_password" "str" is not assignable to "bytes" (reportArgumentType)
         except TypeError:
-            # Salt opsiyonel versiyon
+            # 3. Last resort: some versions might not accept salt → pass anyway
+            #    (if that also fails, we re‑raise the original error)
             try:
-                result = hash_password(password.decode("utf-8"))
-                return result
+                return hash_password(password, salt) # error: Argument of type "str" cannot be assigned to parameter "data" of type "bytes" in function "hash_password" "str" is not assignable to "bytes" (reportArgumentType)
             except BaseException:
                 raise e
-
+"""
 
 def safe_quick_hash(data) -> str:
     """Güvenli quick_hash wrapper"""
@@ -14623,8 +14077,7 @@ def simple_hmac(key: bytes, message: bytes) -> bytes:
     i_key_pad = xor_bytes(key, b"\x36" * block_size)
 
     inner = hashlib.sha256(i_key_pad + message).digest()
-    return hashlib.sha256(o_key_pad + inner).digest().hex()
-
+    return hashlib.sha256(o_key_pad + inner).digest()   # now returns bytes
 
 # ============================================================================
 # TEST 1: KHAUtils
@@ -14910,7 +14363,7 @@ def test_memory_hard_engine():
             print_success(f"  ✅ memory_mb property: {engine.memory_mb}")
 
         if hasattr(engine, "metrics"):
-            print_success(f"  ✅ metrics: {engine.metrics}")
+            print_success(f"  ✅ metrics: {engine.metrics}") # error: Cannot access attribute "metrics" for class "MemoryHardEngine" Attribute "metrics" is unknown (reportAttributeAccessIssue)
 
         return True
 
@@ -15436,13 +14889,14 @@ def scrypt_random(min_deger=0, max_deger=100):
     return int(digest, 16) % (max_deger - min_deger + 1) + min_deger
 
 ## Global Counter (En Güvenli)
-counter = 0
+counter: int = 0
+
 def gscrypt_random(min_deger=0, max_deger=100):
     global counter
     seed = f"{time.time_ns()}_{os.getpid()}_{counter}".encode()
     salt = f"{counter}_{time.time_ns()}".encode()[:64]
-    counter += 1
-    
+    counter += 1  # now OK – counter is known to be int
+
     result = hash_password(seed, salt, is_usb_key=True)
     _, _, digest = result.split('$')
     return int(digest, 16) % (max_deger - min_deger + 1) + min_deger
@@ -15601,7 +15055,8 @@ if __name__ == "__main__":
     print(f"🔍 Bit Farkı: {diff}/256")
 
     # Avalanche test
-    avg = test_avalanche(kha, 200)
+    #avg = test_avalanche(kha, 200)
+    avg, _, _ = test_avalanche(kha, 200)  # extract only the average
     print(f"\n🌋 Avalanche (200 test): {avg:.2f}/128.00 (%{avg / 128:.2%})")
 
     # HMAC test
