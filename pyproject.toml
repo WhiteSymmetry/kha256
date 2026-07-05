@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 name = "kha256"
 version = "0.4.1"
 dynamic = ["keywords", "maintainers"]
-license = "GPL-3.0-or-later"  # SPDX ID
+license = "AGPL-3.0-or-later"  # SPDX ID
 
 # Diğer proje bilgileri (isteğe bağlı ama tavsiye edilir)
 authors = [
