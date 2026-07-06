@@ -1,0 +1,59 @@
+name: Pixi CI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]  # İsterseniz: [ubuntu-latest, macos-latest]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+      fail-fast: false
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v7
+
+      - name: 🐍 Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: 🚀 Install Pixi
+        uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          pixi-version: "latest"
+
+      - name: 🧠 Cache Pixi environments & cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/pixi
+            ~/.pixi/envs
+          key: ${{ runner.os }}-pixi-${{ hashFiles('pixi.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pixi-
+
+      - name: 📦 Install dependencies
+        run: pixi install --frozen
+
+      - name: 🔧 Install package in editable mode
+        run: pixi run pip install -e .
+
+      - name: 🧪 Run tests
+        run: pixi run test
+
+      - name: 🏗️ Build package (wheel + sdist)
+        run: pixi run build
+        # Gerekiyorsa `build` görevini pixi.toml'da tanımlamış olmalısınız:
+        # [tasks]
+        # build = "python -m build"
+
+      - name: 📤 Upload build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: kha256-dist-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: dist/
+          if-no-files-found: ignore
