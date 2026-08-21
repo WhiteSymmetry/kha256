@@ -1,6 +1,6 @@
 [workspace]
 preview = ["pixi-build"]
-authors = ["Mehmet Keçeci <mkececi@yaani.com>"]
+authors = ["Mehmet Keçeci <enfo@tuta.io>"]
 channels = ["pypi", "https://prefix.dev/conda-forge", "https://conda.modular.com/max-nightly", "conda-forge", "https://repo.prefix.dev/modular-community"]
 platforms = ["linux-64"]
 name = "kha256"
