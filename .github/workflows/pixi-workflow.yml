@@ -3,12 +3,18 @@ name: Pixi CI
 on:
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   test-and-build:
+    # Matristen gelen işletim sistemini dinamik olarak kullanır
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]  # İsterseniz: [ubuntu-latest, macos-latest]
+        # 🚀 Tüm ana işletim sistemlerini matrise ekledik
+        os: [ubuntu-latest, windows-latest, macos-13, macos-latest]
         python-version: ["3.11", "3.12", "3.13", "3.14"]
       fail-fast: false
 
@@ -25,6 +31,8 @@ jobs:
         uses: prefix-dev/setup-pixi@v0.10.0
         with:
           pixi-version: "latest"
+          cache: false             # Önbellek çakışmasını engeller
+          frozen: false            # Kilit dosyası yoksa veya eksikse dinamik olarak çözülmesine izin verir
 
       - name: 🧠 Cache Pixi environments & cache
         uses: actions/cache@v6
