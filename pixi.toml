@@ -45,7 +45,6 @@ serve = { cmd = "python -m http.server", cwd = "docs" }
 install-kha256 = "pip install git+https://github.com/WhiteSymmetry/kha256"
 install = "pip install -e ."
 test = { depends-on = ["install"], cmd = "pytest" }
-install-deps = "pip install kha256"
 
 [package.build.backend]
 name = "pixi-build-python"
