@@ -43,7 +43,7 @@ try:
     __author__ = _meta_dict.get("Author-email", "Mehmet Keçeci <mkececi@yaani.com>")
     __license__ = _meta_dict.get("License", "AGPL-3.0-or-later")
 except Exception:
-    __version__ = "0.4.1"
+    __version__ = "0.4.2"
     __author__ = "Mehmet Keçeci"
     __license__ = "AGPL-3.0-or-later"
 
