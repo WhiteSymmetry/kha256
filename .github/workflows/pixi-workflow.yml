@@ -65,3 +65,7 @@ jobs:
           name: kha256-dist-${{ matrix.os }}-py${{ matrix.python-version }}
           path: dist/
           if-no-files-found: ignore
+
+      - name: 🏗️ Paket Derle ve prefix.dev'e Yayınla (Trusted Publishing)
+        # Hangi sunucuda çalışıyorsa (Win/Mac/Linux) o platformun paketini derleyip yükler
+        run: pixi publish --target-channel https://prefix.dev/bilgi
