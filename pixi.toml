@@ -34,6 +34,7 @@ blake3 = ">=1.0.9"
 aiohttp = ">=3.14.1"
 python-dotenv = ">=1.2.2"
 nest-asyncio2 = ">=1.7.2"
+pytest = "*"
 
 [tasks]
 build = "python -m build"
@@ -51,4 +52,7 @@ name = "pixi-build-python"
 version = "*"
 
 [package.host-dependencies]
-hatchling = "*"
+python = ">=3.11"
+setuptools = ">=84.0.0"
+cython = ">=3.0"
+pip = "*"
