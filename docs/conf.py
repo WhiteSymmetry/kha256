@@ -41,7 +41,7 @@ def get_version():
         pass
     
     # 3. YÖNTEM: Fallback - Sabit değer
-    return "0.3.5"
+    return "0.4.2"
 
 # Versiyonu al ve ata
 release = get_version()
