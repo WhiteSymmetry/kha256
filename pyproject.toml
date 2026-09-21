@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kha256"
-version = "0.4.1"
+version = "0.4.2"
 dynamic = ["keywords", "maintainers"]
 license = "AGPL-3.0-or-later"  # SPDX ID
 
@@ -44,12 +44,12 @@ dependencies = [
 ]
 
 [package.build-dependencies]
-setuptools = ">=61.0"
+setuptools = ">=84.0.0"
 cython = ">=3.0.0"
 compilers = "*"  # Linux ortamında Cython kodunu derlemek için GCC/Clang kurar
 
 [tool.pixi.package.build-dependencies]
-setuptools = ">=61.0"
+setuptools = ">=84.0.0"
 cython = ">=3.0.0"
 compilers = "*"
 
@@ -74,6 +74,6 @@ Repository = "https://github.com/WhiteSymmetry/kha256"
 
 [dependency-groups]
 build = [
-    "setuptools (>=82.0.1)",
+    "setuptools (>=84.0.0)",
     "cython (>=3.2.5)"
 ]
