@@ -43,12 +43,12 @@ try:
     __author__ = _meta_dict.get("Author-email", "Mehmet Keçeci <mkececi@yaani.com>")
     __license__ = _meta_dict.get("License", "AGPL-3.0-or-later")
 except Exception:
-    __version__ = "0.4.2"
+    __version__ = "0.4.3"
     __author__ = "Mehmet Keçeci"
     __license__ = "AGPL-3.0-or-later"
 
 __copyright__ = "Copyright 2025-2026 Mehmet Keçeci"
-__email__ = "mkececi@yaani.com"
+__email__ = "enfo@tuta.io"
 __certificate__ = "KHA256-PA-2025-001"
 
 _log = logging.getLogger(__name__)
