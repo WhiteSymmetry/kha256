@@ -4,7 +4,7 @@ schema_version: 1
 # this sets up "context variables" (in this case name and version) that
 # can later be used in Jinja expressions
 context:
-  version: 0.4.2
+  version: 0.4.3
   name: kha256
 
 # top level package information (name and version)
