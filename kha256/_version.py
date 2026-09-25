@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 # - MAJOR: Incompatible API changes
 # - MINOR: Backwards-compatible functionality additions
 # - PATCH: Backwards-compatible bug fixes
-__version__: str = "0.4.2"
+__version__: str = "0.4.3"
 
 # License information
 __license__: str = "AGPL-3.0-or-later"
@@ -36,9 +36,9 @@ __keywords__: List[str] = [
 
 # Author information
 __author__: str = "Mehmet Keçeci"
-__author_email__: str = "mkececi@yaani.com"
+__author_email__: str = "enfo@tuta.io"
 __maintainer__: str = "Mehmet Keçeci"
-__maintainer_email__: str = "mkececi@yaani.com"
+__maintainer_email__: str = "enfo@tuta.io"
 
 # Project URLs
 __url__: str = "https://github.com/WhiteSymmetry/kha256"
