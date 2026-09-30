@@ -4284,14 +4284,26 @@ def _memory_hard_fill(self, memory_blocks: np.ndarray, salt: bytes):
 def _balloon_expand(self, password: bytes, salt: bytes, memory_cost_kb: int):
     """Balloon hashing expand phase - sequential memory dependency"""
     blocks = [b""] * memory_cost_kb
+    # Password için computationally-expensive başlangıç materyali (Argon2id)
+	pwd_seed = argon2.low_level.hash_secret_raw(
+		secret=password,
+		salt=salt,
+		time_cost=max(2, self.config.time_cost),
+		memory_cost=max(65536, memory_cost_kb),
+		parallelism=1,
+		hash_len=64,
+		type=argon2.low_level.Type.ID,
+	)
 
     # İlk blok
-    blocks[0] = hashlib.blake2b(password + salt, digest_size=64).digest()
+    #blocks[0] = hashlib.blake2b(password + salt, digest_size=64).digest()
+	blocks[0] = hashlib.blake2b(pwd_seed + salt, digest_size=64).digest()
 
     # Sequential fill (her blok önceki bloğa bağlı)
     for i in range(1, memory_cost_kb):
         blocks[i] = hashlib.blake2b(
-            blocks[i - 1] + password + salt + i.to_bytes(4, "big"), digest_size=64
+            #blocks[i - 1] + password + salt + i.to_bytes(4, "big"), digest_size=64
+			blocks[i - 1] + pwd_seed + salt + i.to_bytes(4, "big"), digest_size=64
         ).digest()
 
     return blocks
