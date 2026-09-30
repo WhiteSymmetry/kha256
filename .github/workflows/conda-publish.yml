@@ -12,6 +12,9 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+
 jobs:
   build-publish:
     runs-on: ubuntu-latest
