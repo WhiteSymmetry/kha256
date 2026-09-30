@@ -6891,7 +6891,16 @@ class FortifiedKhaHash256:
         if self._deterministic:
             if salt is None:
                 raise ValueError("Deterministic mod için salt ZORUNLU!")
-            result = hashlib.blake2b(data_bytes + salt, digest_size=32).hexdigest()
+            #result = hashlib.blake2b(data_bytes + salt, digest_size=32).hexdigest()
+			result = argon2.low_level.hash_secret_raw(
+				secret=data_bytes,
+	            salt=salt,
+	            time_cost=3,
+	            memory_cost=65536,  # 64 MB
+	            parallelism=1,
+	            hash_len=32,
+	            type=argon2.low_level.Type.ID
+	            ).hex()
 
             # METRICS
             elapsed = (time.perf_counter() - start_time) * 1000
