@@ -11187,6 +11187,8 @@ class MockAuthSystem:
     """Mock kimlik doğrulama sistemi"""
 
     def __init__(self):
+        self._password_hasher = argon2.PasswordHasher()
+
         self.users = {
             "admin": {
                 "password_hash": self._hash_password("Admin123!"),
@@ -11208,8 +11210,8 @@ class MockAuthSystem:
         self.MAX_FAILED_ATTEMPTS = 3
 
     def _hash_password(self, password):
-        """Basit hash fonksiyonu (gerçekte memory-hard kullanılmalı)"""
-        return hashlib.sha256(password.encode()).hexdigest()
+        """Argon2 ile parola hashle (memory-hard)"""
+        return self._password_hasher.hash(password)
 
     def authenticate(self, username, password):
         """Kullanıcıyı doğrula"""
