@@ -4061,10 +4061,35 @@ class TrueMemoryHardHasher:
     def _expand(self, password: bytes, salt: bytes) -> list[bytes]:
         """Sequential memory fill (deterministic)"""
         blocks = []
-        current = hashlib.blake2b(password + salt, digest_size=self.block_size).digest()
+        #current = hashlib.blake2b(password + salt, digest_size=self.block_size).digest()
+        current = argon2.low_level.hash_secret_raw(
+                secret=password,
+                salt=salt,
+                time_cost=self.time_cost,
+                memory_cost=self.memory_cost_kb,
+                parallelism=self.parallelism,
+                hash_len=self.block_size,
+                type=argon2.low_level.Type.ID,
+            )
         blocks.append(current)
 
         for i in range(1, self.space_cost):
+            iter_salt = hashlib.blake2b(
+                salt + i.to_bytes(4, "big",
+                signed=False), digest_size=16).digest()
+            current = argon2.low_level.hash_secret_raw(
+                secret=current + password + i.to_bytes(4, "big", signed=False),
+                salt=iter_salt,
+                time_cost=self.time_cost,
+                memory_cost=self.memory_cost_kb,
+                parallelism=self.parallelism,
+                hash_len=self.block_size,
+                type=argon2.low_level.Type.ID,
+                )
+            blocks.append(current)
+
+        return blocks
+        """
             current = hashlib.blake2b(
                 current + password + salt + i.to_bytes(4, "big", signed=False),
                 digest_size=self.block_size,
@@ -4072,6 +4097,7 @@ class TrueMemoryHardHasher:
             blocks.append(current)
 
         return blocks
+        """
 
     def _mix(self, blocks: list[bytes], password: bytes, salt: bytes):
         """Data-dependent mixing (deterministic)"""
