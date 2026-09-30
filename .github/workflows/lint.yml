@@ -2,9 +2,8 @@ name: Lint with Ruff
 
 on: [push, pull_request]
 
-runs:
-  using: 'node24'
-  main: 'main.js'
+permissions:
+  contents: read
 
 jobs:
   ruff:
