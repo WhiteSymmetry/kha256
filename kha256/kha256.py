@@ -7515,13 +7515,32 @@ class FortifiedKhaHash256:
         self, data: bytes, salt: bytes, original_data: bytes
     ) -> bytes:
         """
-        Minimal güvenlik katmanı — sadece SHA3-512 (XOR folding YOK)
+        #Minimal güvenlik katmanı — sadece SHA3-512 (XOR folding YOK)
+        Minimal güvenlik katmanı — password verisi için memory-hard KDF tabanlı karıştırma
         """
         # Deterministik key türetme
-        key = hashlib.sha3_512(salt + original_data + b"sec_v6").digest()
+        #key = hashlib.sha3_512(salt + original_data + b"sec_v6").digest()
+        # Deterministik key türetme (memory-hard)
+        key = hashlib.scrypt(
+            password=original_data + b"sec_v6",
+	        salt=salt,
+	        n=2**14,
+	        r=8,
+	        p=1,
+	        dklen=64,
+	        )
 
         # Non-lineer karıştırma — XOR folding YOK
-        mixed = hashlib.sha3_512(data + key).digest()
+        #mixed = hashlib.sha3_512(data + key).digest()
+        # Non-lineer karıştırma (memory-hard)
+        mixed = hashlib.scrypt(
+	        password=data + key,
+	        salt=salt + b"mix_v6",
+	        n=2**14,
+	        r=8,
+	        p=1,
+	        dklen=64,
+	        )
 
         # Uzunluk koruma (truncate sadece son adımda)
         return mixed[: len(data)] if len(mixed) > len(data) else mixed
