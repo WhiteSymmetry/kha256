@@ -2988,7 +2988,8 @@ def diagnose_quantum_apis() -> Dict[str, Any]:
         if api.requires_token:
             token = getattr(api, 'api_key', None) or getattr(api, 'refresh_token', None) or getattr(api, 'api_token', None)
             if token:
-                print(f"   Token: {token[:10]}...{token[-4:]} ({len(token)} chars)")
+                #print(f"   Token: {token[:10]}...{token[-4:]} ({len(token)} chars)")
+                print(f"   Token: ✅ PRESENT ({len(token)} chars, redacted)")
             else:
                 print(f"   Token: ❌ MISSING")
         
