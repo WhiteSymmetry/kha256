@@ -4,7 +4,7 @@ schema_version: 1
 # this sets up "context variables" (in this case name and version) that
 # can later be used in Jinja expressions
 context:
-  version: 0.4.4
+  version: 0.4.5
   name: kha256
 
 # top level package information (name and version)
@@ -14,7 +14,7 @@ package:
 
 source:
   url: https://pypi.org{{ name }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
-  sha256: f2af4d24ae19532070bc7224721c5d55b4a8bd2005fd0ea7704162224c710b0f
+  sha256: 
 
 # build number (should be incremented if a new build is made, but version is not incrementing)
 build:
