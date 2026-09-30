@@ -10814,8 +10814,18 @@ def hash_password(password: str, salt: Optional[bytes] = None) -> str:
 
 # Universal Doğrulama Fonksiyonu: Parola Doğrulama
 def verify_password(stored_hash: str, password: str) -> bool:
-    """Her iki tür hash'i de doğrulayabilen universal fonksiyon"""
+    #"""Her iki tür hash'i de doğrulayabilen universal fonksiyon"""
+	"""Argon2 hash doğrulama (parola için güvenli ve standart)."""
     try:
+        ph = argon2.PasswordHasher()
+	        return ph.verify(stored_hash, password)
+	    except Exception:
+	        return False
+	
+	
+	def _legacy_verify_password_format(stored_hash: str, password: str) -> bool:
+	    """Eski format doğrulama (geri uyumluluk için ayrı tutuldu)."""
+	    try:
         parts = stored_hash.split("$")
         if len(parts) != 3:
             return False
@@ -12690,11 +12700,18 @@ def economic_analysis(memory_mb=8, time_ms=580):
 
 
 def secure_password_hashing(password, salt=None):
-    """Güvenli parola hash'leme için minimum ayarlar"""
+    #"""Güvenli parola hash'leme için minimum ayarlar"""
+	"""Güvenli parola hash'leme: Argon2id kullanır."""
 
-    if salt is None:
-        salt = secrets.token_bytes(32)  # 256-bit - NIST/OWASP uyumlu
+    #if salt is None:
+        #salt = secrets.token_bytes(32)  # 256-bit - NIST/OWASP uyumlu
 
+    # Argon2 kendi salt'ını güvenli biçimde üretir/yönetir.
+    salt = secrets.token_bytes(32)  # 256-bit - NIST/OWASP uyumlu 	    
+	# API uyumluluğu için tuple döndürmeye devam ediyoruz.
+	ph = argon2.PasswordHasher()
+	return ph.hash(password), None
+	"""
     # NIST SP 800-63B uyumlu ayarlar
     hasher = TrueMemoryHardHasher(
         memory_cost_kb=2048,  # 16MB (önerilen minimum)
@@ -12702,11 +12719,10 @@ def secure_password_hashing(password, salt=None):
     )
 
     return hasher.hash(password.encode(), salt), salt
+	"""
 
 
 # Renkli çıktı için ANSI kodları
-
-
 class Colors:
     GREEN = "\033[92m"
     YELLOW = "\033[93m"
