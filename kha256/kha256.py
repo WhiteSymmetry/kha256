@@ -3067,7 +3067,8 @@ def debug_anu_apis():
         api_token = getattr(api, "api_token", "")
         print(f"URL: {url}")
         if api_token:
-            print(f"Token: {api_token[:10]}...{api_token[-4:]} ({len(api_token)} chars)")
+            #print(f"Token: {api_token[:10]}...{api_token[-4:]} ({len(api_token)} chars)")
+            print("Token: [REDACTED] (configured)")
         else:
             print("Token: ❌ YOK")
         print(f"Rate Limit: {QRNGConfig.RATE_LIMITS.get('anu_token', 0)}s")
