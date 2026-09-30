@@ -4029,18 +4029,18 @@ class TrueMemoryHardHasher:
                     digest_size=self.block_size,
                 ).digest()
                 blocks[i] = mixed
-				
-	def _squeeze(self, blocks: list[bytes], password: bytes, salt: bytes) -> bytes:
-	    """Tüm bloklardan deterministic 32-byte çıktı türet (password-safe KDF)"""
-	    final_input = b"".join(blocks) + password + salt
-	
-	    kdf = HKDF(
-	        algorithm=hashes.SHA256(),
-	        length=32,
-	        salt=salt,
-	        info=b"KHA256-TrueMemoryHardHasher-squeeze-v1",
-	    )
-	    return kdf.derive(final_input)
+
+    def _squeeze(self, blocks: list[bytes], password: bytes, salt: bytes) -> bytes:
+        """Tüm bloklardan deterministic 32-byte çıktı türet (password-safe KDF)"""
+        final_input = b"".join(blocks) + password + salt
+
+        kdf = HKDF(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt,
+            info=b"KHA256-TrueMemoryHardHasher-squeeze-v1",
+        )
+        return kdf.derive(final_input)
 
     """
     def hash(self, password: str | bytes, salt: bytes) -> str:
@@ -4302,26 +4302,26 @@ def _memory_hard_fill(self, memory_blocks: np.ndarray, salt: bytes):
 def _balloon_expand(self, password: bytes, salt: bytes, memory_cost_kb: int):
     """Balloon hashing expand phase - sequential memory dependency"""
     blocks = [b""] * memory_cost_kb
+
     # Password için computationally-expensive başlangıç materyali (Argon2id)
-	pwd_seed = argon2.low_level.hash_secret_raw(
-		secret=password,
-		salt=salt,
-		time_cost=max(2, self.config.time_cost),
-		memory_cost=max(65536, memory_cost_kb),
-		parallelism=1,
-		hash_len=64,
-		type=argon2.low_level.Type.ID,
-	)
+    pwd_seed = argon2.low_level.hash_secret_raw(
+        secret=password,
+        salt=salt,
+        time_cost=max(2, self.config.time_cost),
+        memory_cost=max(65536, memory_cost_kb),
+        parallelism=1,
+        hash_len=64,
+        type=argon2.low_level.Type.ID,
+    )
 
     # İlk blok
-    #blocks[0] = hashlib.blake2b(password + salt, digest_size=64).digest()
-	blocks[0] = hashlib.blake2b(pwd_seed + salt, digest_size=64).digest()
+    blocks[0] = hashlib.blake2b(pwd_seed + salt, digest_size=64).digest()
 
     # Sequential fill (her blok önceki bloğa bağlı)
     for i in range(1, memory_cost_kb):
         blocks[i] = hashlib.blake2b(
-            #blocks[i - 1] + password + salt + i.to_bytes(4, "big"), digest_size=64
-			blocks[i - 1] + pwd_seed + salt + i.to_bytes(4, "big"), digest_size=64
+            blocks[i - 1] + pwd_seed + salt + i.to_bytes(4, "big"),
+            digest_size=64,
         ).digest()
 
     return blocks
@@ -6921,16 +6921,16 @@ class FortifiedKhaHash256:
         if self._deterministic:
             if salt is None:
                 raise ValueError("Deterministic mod için salt ZORUNLU!")
-            #result = hashlib.blake2b(data_bytes + salt, digest_size=32).hexdigest()
-			result = argon2.low_level.hash_secret_raw(
-				secret=data_bytes,
-	            salt=salt,
-	            time_cost=3,
-	            memory_cost=65536,  # 64 MB
-	            parallelism=1,
-	            hash_len=32,
-	            type=argon2.low_level.Type.ID
-	            ).hex()
+
+            result = argon2.low_level.hash_secret_raw(
+                secret=data_bytes,
+                salt=salt,
+                time_cost=3,
+                memory_cost=65536,  # 64 MB
+                parallelism=1,
+                hash_len=32,
+                type=argon2.low_level.Type.ID,
+            ).hex()
 
             # METRICS
             elapsed = (time.perf_counter() - start_time) * 1000
@@ -9997,16 +9997,14 @@ def test_fortified_hashers() -> Dict[str, Dict[str, Any]]:
         total_time = 0
         hashes = []
 
-        #for pwd in test_passwords:
-		for idx, pwd in enumerate(test_passwords, start=1):
+        for idx, pwd in enumerate(test_passwords, start=1):
             start = time.perf_counter()
             hash_result = hasher.hash(pwd.encode())
             elapsed = (time.perf_counter() - start) * 1000  # ms
 
             total_time += elapsed
             hashes.append(hash_result)
-            #print(f"  '{pwd}' → {elapsed:.1f}ms → {hash_result[:16]}...")
-			print(f"  password_{idx} → {elapsed:.1f}ms → {hash_result[:16]}...")
+            print(f"  password_{idx} → {elapsed:.1f}ms → {hash_result[:16]}...")
 
         avg_time = total_time / len(test_passwords)
         unique_hashes = len(set(hashes))
@@ -10021,6 +10019,7 @@ def test_fortified_hashers() -> Dict[str, Dict[str, Any]]:
             f"  📊 AVG: {avg_time:.1f}ms | Collision: {100 * unique_hashes / len(test_passwords):.1f}%"
         )
 
+    return results
     # 2. generate_fortified_hasher_password() parametrik
     print("\n🔍 Testing: generate_fortified_hasher_password() defaults")
     hasher_param = generate_fortified_hasher_password()
@@ -10825,48 +10824,48 @@ def hash_password(password: str, salt: Optional[bytes] = None) -> str:
 # Universal Doğrulama Fonksiyonu: Parola Doğrulama
 def verify_password(stored_hash: str, password: str) -> bool:
     #"""Her iki tür hash'i de doğrulayabilen universal fonksiyon"""
-	"""Argon2 hash doğrulama (parola için güvenli ve standart)."""
+    """Argon2 hash doğrulama (parola için güvenli ve standart)."""
     try:
         ph = argon2.PasswordHasher()
-	        return ph.verify(stored_hash, password)
-	    except Exception:
-	        return False
-	
-	
-	def _legacy_verify_password_format(stored_hash: str, password: str) -> bool:
-	    """Eski format doğrulama (geri uyumluluk için ayrı tutuldu)."""
-	    try:
-        parts = stored_hash.split("$")
-        if len(parts) != 3:
-            return False
-
-        prefix, salt_hex, original_digest = parts
-        salt = bytes.fromhex(salt_hex)
-
-        # Prepare config once, set values per prefix
-        config = FortifiedConfig()
-
-        if prefix == "KHA256-USB":
-            config.iterations = 16
-            config.components_per_hash = 32
-            config.memory_cost_kb = 1024
-            config.time_cost = 3
-            hasher = FortifiedKhaHash256(config)
-        elif prefix == "KHA256":
-            # Normal password settings
-            config.iterations = 32
-            config.components_per_hash = 48
-            config.memory_cost_kb = 1024
-            config.time_cost = 3
-            hasher = FortifiedKhaHash256(config)   # <-- same class, consistent
-        else:
-            return False
-
-        new_digest = hasher.hash(password, salt)
-        return secrets.compare_digest(new_digest, original_digest)
-
+        return ph.verify(stored_hash, password)
     except Exception:
         return False
+	
+	
+    def _legacy_verify_password_format(stored_hash: str, password: str) -> bool:
+        """Eski format doğrulama (geri uyumluluk için ayrı tutuldu)."""
+        try:
+            parts = stored_hash.split("$")
+            if len(parts) != 3:
+                return False
+
+            prefix, salt_hex, original_digest = parts
+            salt = bytes.fromhex(salt_hex)
+
+            # Prepare config once, set values per prefix
+            config = FortifiedConfig()
+
+            if prefix == "KHA256-USB":
+                config.iterations = 16
+                config.components_per_hash = 32
+                config.memory_cost_kb = 1024
+                config.time_cost = 3
+                hasher = FortifiedKhaHash256(config)
+            elif prefix == "KHA256":
+                # Normal password settings
+                config.iterations = 32
+                config.components_per_hash = 48
+                config.memory_cost_kb = 1024
+                config.time_cost = 3
+                hasher = FortifiedKhaHash256(config)   # <-- same class, consistent
+            else:
+                return False
+
+            new_digest = hasher.hash(password, salt)
+            return secrets.compare_digest(new_digest, original_digest)
+
+        except Exception:
+            return False
 
 
 """
@@ -11290,16 +11289,16 @@ class MockAuthSystem:
 
         # Şifre kontrolü
         try:
-                self._password_hasher.verify(self.users[username]["password_hash"], password)
-            except (argon2.exceptions.VerifyMismatchError, argon2.exceptions.VerificationError):
-                self.failed_attempts[username] += 1
-                kalan = self.MAX_FAILED_ATTEMPTS - self.failed_attempts[username]
-                if kalan <= 0:
-                    return False, "Hesap kilitlendi"
-                return False, f"Hatalı şifre! {kalan} deneme hakkı kaldı"
+            self._password_hasher.verify(self.users[username]["password_hash"], password)
+        except (argon2.exceptions.VerifyMismatchError, argon2.exceptions.VerificationError):
+            self.failed_attempts[username] += 1
+            kalan = self.MAX_FAILED_ATTEMPTS - self.failed_attempts[username]
+            if kalan <= 0:
+                return False, "Hesap kilitlendi"
+            return False, f"Hatalı şifre! {kalan} deneme hakkı kaldı"
     
-            self.failed_attempts[username] = 0
-            return True, f"Giriş başarılı! Hoşgeldiniz {username}"
+        self.failed_attempts[username] = 0
+        return True, f"Giriş başarılı! Hoşgeldiniz {username}"
             
         stored_hash = self.users[username]["password_hash"]
         input_hash = self._hash_password(password)
@@ -12710,26 +12709,13 @@ def economic_analysis(memory_mb=8, time_ms=580):
 
 
 def secure_password_hashing(password, salt=None):
-    #"""Güvenli parola hash'leme için minimum ayarlar"""
-	"""Güvenli parola hash'leme: Argon2id kullanır."""
-
-    #if salt is None:
-        #salt = secrets.token_bytes(32)  # 256-bit - NIST/OWASP uyumlu
-
+    """Güvenli parola hash'leme: Argon2id kullanır."""
     # Argon2 kendi salt'ını güvenli biçimde üretir/yönetir.
-    salt = secrets.token_bytes(32)  # 256-bit - NIST/OWASP uyumlu 	    
-	# API uyumluluğu için tuple döndürmeye devam ediyoruz.
-	ph = argon2.PasswordHasher()
-	return ph.hash(password), None
-	"""
-    # NIST SP 800-63B uyumlu ayarlar
-    hasher = TrueMemoryHardHasher(
-        memory_cost_kb=2048,  # 16MB (önerilen minimum)
-        time_cost=4,  # 3 iterasyon
-    )
+    salt = secrets.token_bytes(32)  # 256-bit - NIST/OWASP uyumlu
 
-    return hasher.hash(password.encode(), salt), salt
-	"""
+    # API uyumluluğu için tuple döndürmeye devam ediyoruz.
+    ph = argon2.PasswordHasher()
+    return ph.hash(password), None
 
 
 # Renkli çıktı için ANSI kodları
@@ -15190,8 +15176,7 @@ if __name__ == "__main__":
         # Örnek 2: Şifre - HER ZAMAN AYNI SONUÇ!
         password = "ÇokGizliŞifre123!@#"
         password_hash = hash_password_str(password, fixed_salt)
-        #print(f"🔐 '{password}'")
-		print("🔐 '[REDACTED PASSWORD]'")
+        print("🔐 '[REDACTED PASSWORD]'")
         print(f"🔑 → {password_hash[:64]}...\n")  # Her çalıştırmada aynı
 
         # Örnek 3: Avalanche testi - AYNI SALT ŞART!
