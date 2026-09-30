@@ -11219,6 +11219,18 @@ class MockAuthSystem:
             return False, "Kullanıcı bulunamadı"
 
         # Şifre kontrolü
+        try:
+                self._password_hasher.verify(self.users[username]["password_hash"], password)
+            except (argon2.exceptions.VerifyMismatchError, argon2.exceptions.VerificationError):
+                self.failed_attempts[username] += 1
+                kalan = self.MAX_FAILED_ATTEMPTS - self.failed_attempts[username]
+                if kalan <= 0:
+                    return False, "Hesap kilitlendi"
+                return False, f"Hatalı şifre! {kalan} deneme hakkı kaldı"
+    
+            self.failed_attempts[username] = 0
+            return True, f"Giriş başarılı! Hoşgeldiniz {username}"
+            
         stored_hash = self.users[username]["password_hash"]
         input_hash = self._hash_password(password)
 
