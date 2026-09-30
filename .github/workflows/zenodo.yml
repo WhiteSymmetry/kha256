@@ -4,6 +4,9 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+
 runs:
   using: 'node24'
   main: 'main.js'
