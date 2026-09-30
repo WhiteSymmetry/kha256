@@ -11799,8 +11799,10 @@ class MemoryHardDemo:
         # Zaman gecikmesi simülasyonu
         time.sleep(0.001)  # 1ms - gerçekte 580ms
 
-        # Son hash
-        return hashlib.sha256(bytes(memory_block[:1024]) + data + salt).hexdigest()
+        # Son hash (password-safe KDF)
+        #return hashlib.sha256(bytes(memory_block[:1024]) + data + salt).hexdigest()
+        mixed_input = bytes(memory_block[:1024]) + data
+        return hashlib.pbkdf2_hmac("sha256", mixed_input, salt, 600_000).hex()
 
     def normal_hash(self, data: bytes, salt: bytes) -> str:
         #"""Normal hash (SHA-256)"""
