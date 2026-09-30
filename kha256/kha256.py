@@ -3121,7 +3121,8 @@ def get_api_status() -> Dict[str, Any]:
         # Token durumu
         if api.requires_token:
             token = getattr(api, 'api_key', None) or getattr(api, 'refresh_token', None) or getattr(api, 'api_token', None)
-            token_status = f"✅ {token[:10]}..." if token else "❌ Eksik"
+            #token_status = f"✅ {token[:10]}..." if token else "❌ Eksik"
+            token_status = "✅ Mevcut" if token else "❌ Eksik"
         else:
             token_status = "🌐 Gerekmiyor"
         
