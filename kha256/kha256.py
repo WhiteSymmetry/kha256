@@ -15133,7 +15133,8 @@ if __name__ == "__main__":
         # Örnek 2: Şifre - HER ZAMAN AYNI SONUÇ!
         password = "ÇokGizliŞifre123!@#"
         password_hash = hash_password_str(password, fixed_salt)
-        print(f"🔐 '{password}'")
+        #print(f"🔐 '{password}'")
+		print("🔐 '[REDACTED PASSWORD]'")
         print(f"🔑 → {password_hash[:64]}...\n")  # Her çalıştırmada aynı
 
         # Örnek 3: Avalanche testi - AYNI SALT ŞART!
