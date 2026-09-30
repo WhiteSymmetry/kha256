@@ -9958,14 +9958,16 @@ def test_fortified_hashers() -> Dict[str, Dict[str, Any]]:
         total_time = 0
         hashes = []
 
-        for pwd in test_passwords:
+        #for pwd in test_passwords:
+		for idx, pwd in enumerate(test_passwords, start=1):
             start = time.perf_counter()
             hash_result = hasher.hash(pwd.encode())
             elapsed = (time.perf_counter() - start) * 1000  # ms
 
             total_time += elapsed
             hashes.append(hash_result)
-            print(f"  '{pwd}' → {elapsed:.1f}ms → {hash_result[:16]}...")
+            #print(f"  '{pwd}' → {elapsed:.1f}ms → {hash_result[:16]}...")
+			print(f"  password_{idx} → {elapsed:.1f}ms → {hash_result[:16]}...")
 
         avg_time = total_time / len(test_passwords)
         unique_hashes = len(set(hashes))
