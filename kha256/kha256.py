@@ -11803,8 +11803,10 @@ class MemoryHardDemo:
         return hashlib.sha256(bytes(memory_block[:1024]) + data + salt).hexdigest()
 
     def normal_hash(self, data: bytes, salt: bytes) -> str:
-        """Normal hash (SHA-256)"""
-        return hashlib.sha256(data + salt).hexdigest()
+        #"""Normal hash (SHA-256)"""
+        #return hashlib.sha256(data + salt).hexdigest()
+        """Normal hash (PBKDF2-HMAC-SHA256)"""  
+        return hashlib.pbkdf2_hmac("sha256", data, salt, 600_000).hex()
 
     def demo_registration(self):
         """Kullanıcı kayıt demo"""
