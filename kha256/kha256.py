@@ -1841,9 +1841,9 @@ class BaseQRNG:
         """API'den random al (subclass'lar implement etmeli)"""
         raise NotImplementedError
 
-
+"""
 class LFDQRNG(BaseQRNG):
-    """LfD QRNG (Almanya) - Token gerektirmez"""
+    #LfD QRNG (Almanya) - Token gerektirmez
     def __init__(self):
         super().__init__("lfd", requires_token=False)
         self.url = "https://lfdr.de/qrng_api/qrng"
@@ -1871,6 +1871,67 @@ class LFDQRNG(BaseQRNG):
         except Exception as e:
             print(f"   ⚠️ LfD hatası: {e}")
             return None
+"""
+class LFDQRNG(BaseQRNG):
+    """
+    LfD QRNG (Almanya) - Kuantum Rastsal Sayı Üreteci Entegrasyon Sınıfı.
+    Herhangi bir token veya kimlik doğrulama gerektirmez.
+    """
+    def __init__(self):
+        super().__init__("lfd", requires_token=False)
+        self.url = "https://lfdr.de/qrng_api/qrng"
+    
+    def fetch(self, length: int, debug: bool = False) -> Optional[bytes]:
+        """
+        Almanya LfD kuantum donanımından belirtilen uzunlukta ham rastsal bayt çeker.
+        """
+        if not self.can_request():
+            if debug: print("   [!] LfD QRNG: Hız sınırı (Rate Limit) engeline takıldı.")
+            return None
+        
+        try:
+            # Sunucunun bot koruma filtrelerini aşmak için standart tarayıcı başlıkları
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "application/json"
+            }
+            
+            # Sunucudan ham bayt doğruluğunu garantilemek için talep edilen bayt miktarını 2 katı kadar esnetiyoruz
+            bytes_needed = length * 2
+            params = {"length": bytes_needed, "format": "HEX"}
+            
+            if debug: print(f"   [*] Kuantum API isteği gönderiliyor: {self.url}")
+            resp = requests.get(self.url, params=params, headers=headers, timeout=QRNGConfig.TIMEOUT)
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                qrn_hex = data.get("qrn", "")
+                
+                if qrn_hex:
+                    # Hex string verisini güvenli bir şekilde ham bayt dizisine dönüştür
+                    raw_bytes = bytes.fromhex(qrn_hex.strip())
+                    
+                    # Sadece hedeflenen uzunluktaki kısmı kırp
+                    final_bytes = raw_bytes[:length]
+                    
+                    # Eğer dönen veri internet hattındaki bir kesintiden dolayı yetersiz kalırsa CSPRNG ile tamamla
+                    if len(final_bytes) < length:
+                        if debug: print("   [!] Alınan kuantum verisi yetersiz, eksik kısım CSPRNG ile tamamlanıyor.")
+                        final_bytes += secrets.token_bytes(length - len(final_bytes))
+                    
+                    # İstatistiksel verileri (toplam bayt, son istek zamanı) güncelle
+                    self.update_stats(len(final_bytes))
+                    
+                    if debug: print(f"   [+] Kuantum verisi başarıyla işlendi: {len(final_bytes)} bytes.")
+                    return final_bytes
+                    
+            if debug: print(f"   [–] LfD Sunucu Hatası. Durum Kodu: {resp.status_code}")
+            return None
+            
+        except Exception as e:
+            print(f"   ⚠️ LfD hatası: {e}")
+            return None
+
 
 
 class QRANDOMQRNG(BaseQRNG):
@@ -11154,9 +11215,9 @@ class SimpleKhaHasher:
             "version": f"KHA-256 v{__version__}",
         }
 
-
+"""
 class SimpleRateLimiter:
-    """Basit bir rate limiter implementasyonu"""
+   #Basit bir rate limiter implementasyonu
 
     def __init__(self, max_requests=5, window_seconds=60):
         self.max_requests = max_requests
@@ -11165,7 +11226,7 @@ class SimpleRateLimiter:
         self.blocked_ips = {}  # Engellenen IP'ler ve süreleri
 
     def is_allowed(self, client_ip):
-        """İsteğe izin veriliyor mu?"""
+        #İsteğe izin veriliyor mu?
         now = time.time()
 
         # IP engellenmiş mi?
@@ -11206,7 +11267,7 @@ class SimpleRateLimiter:
         return True, f"İzin verildi. Kalan: {remaining}, Sıfırlanma: {reset_in:.0f}s"
 
     def get_stats(self, client_ip=None):
-        """İstatistikleri getir"""
+        #İstatistikleri getir
         now = time.time()
 
         if client_ip:
@@ -11239,12 +11300,122 @@ class SimpleRateLimiter:
             }
 
     def reset_ip(self, client_ip):
-        """IP'nin limitlerini sıfırla"""
+        #IP'nin limitlerini sıfırla
         if client_ip in self.requests:
             del self.requests[client_ip]
         if client_ip in self.blocked_ips:
             del self.blocked_ips[client_ip]
         return True
+"""
+
+class SimpleRateLimiter:
+    """
+    KHA-256 API ve Ağ Katmanı için DDoS / Brute-Force Korumalı,
+    Kayan Pencere Günlüğü (Sliding Window Log) ve Geçici Kara Liste Destekli
+    Gelişmiş Hız Sınırlandırıcı Sınıfı.
+    """
+
+    def __init__(self, max_requests: int = 5, window_seconds: int = 60):
+        self.max_requests = int(max_requests)
+        self.window_seconds = int(window_seconds)
+        self.requests = defaultdict(list)
+        self.blocked_ips = {}  # Engellenen IP'ler ve bitiş zaman damgaları
+
+    def is_allowed(self, client_ip: str):
+        """
+        İstemci IP adresinin istek sınırını kontrol eder.
+        
+        Dönen Değer:
+            (bool, str): (Geçiş İzni, Durum/Hata Mesajı)
+        """
+        now = time.time()
+
+        # 1. Aşama: Geçici Kara Liste (Blacklist) Kontrolü
+        if client_ip in self.blocked_ips:
+            block_until = self.blocked_ips[client_ip]
+            if now < block_until:
+                remaining = block_until - now
+                return False, f"IP engellendi. {remaining:.1f} saniye kaldi."
+            else:
+                # Engelleme süresi dolmuşsa kara listeden güvenle temizle
+                del self.blocked_ips[client_ip]
+
+        # 2. Aşama: Zaman Penceresi Temizliği (Sliding Window Log)
+        # Aktif pencerenin dışındaki eski zaman damgalarını hafızadan uçurur (RAM Optimizasyonu)
+        if client_ip in self.requests:
+            self.requests[client_ip] = [
+                req_time
+                for req_time in self.requests[client_ip]
+                if now - req_time < self.window_seconds
+            ]
+
+        # 3. Aşama: DDoS / Brute-Force Agresif Limit Kontrolü
+        if len(self.requests[client_ip]) >= self.max_requests:
+            # Sınır aşıldığı an IP geçici olarak 2 kat ceza süresiyle kara listeye alınır
+            block_duration = self.window_seconds * 2
+            self.blocked_ips[client_ip] = now + block_duration
+            return False, f"Rate limit asildi. {block_duration} saniye engellendi."
+
+        # 4. Aşama: İstek Hak Tanımlama ve Günlüğe Kaydetme
+        self.requests[client_ip].append(now)
+
+        # Kalan metrik hesaplamaları
+        remaining = self.max_requests - len(self.requests[client_ip])
+        window_end = (
+            max(self.requests[client_ip]) + self.window_seconds
+            if self.requests[client_ip]
+            else now
+        )
+        reset_in = max(0.0, window_end - now)
+
+        return True, f"Izin verildi. Kalan: {remaining}, Sifirlanma: {reset_in:.0f}s"
+
+    def get_stats(self, client_ip: str = None) -> dict:
+        """
+        Sistem geneli veya belirli bir IP için anlık koruma ve yük istatistiklerini döndürür.
+        """
+        now = time.time()
+
+        if client_ip:
+            # Belirli IP için temiz güncel liste analizi
+            recent_requests = [
+                req_time
+                for req_time in self.requests.get(client_ip, [])
+                if now - req_time < self.window_seconds
+            ]
+
+            is_blocked = client_ip in self.blocked_ips and now < self.blocked_ips[client_ip]
+            
+            return {
+                "ip": client_ip,
+                "recent_requests": len(recent_requests),
+                "max_requests": self.max_requests,
+                "window_seconds": self.window_seconds,
+                "is_blocked": is_blocked,
+                "blocked_until": self.blocked_ips.get(client_ip) if is_blocked else None,
+                "requests_timestamps": recent_requests,
+            }
+        else:
+            # Tüm sistem geneli ağ izleme istatistikleri
+            active_blocked = [ip for ip, until in self.blocked_ips.items() if now < until]
+            return {
+                "total_ips": len(self.requests),
+                "blocked_ips": len(active_blocked),
+                "max_requests": self.max_requests,
+                "window_seconds": self.window_seconds,
+                "active_blacklist_pool": active_blocked
+            }
+
+    def reset_ip(self, client_ip: str) -> bool:
+        """
+        Belirtilen bir IP adresinin tüm limitlerini ve engel durumunu anında sıfırlar (Unblock).
+        """
+        if client_ip in self.requests:
+            del self.requests[client_ip]
+        if client_ip in self.blocked_ips:
+            del self.blocked_ips[client_ip]
+        return True
+
 
 
 # ============================================================================
