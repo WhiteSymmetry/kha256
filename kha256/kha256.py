@@ -3964,12 +3964,23 @@ class TrueMemoryHardHasher:
             password.encode("utf-8") if isinstance(password, str) else password
         )
 
-        # ---------- 3. HASH HESAPLAMA ----------
+        # ---------- 3. HASH HESAPLAMA (Argon2id) ----------
         start = time.perf_counter()
 
-        blocks = self._expand(password_bytes, salt)
-        self._mix(blocks, password_bytes, salt)
-        hash_bytes = self._squeeze(blocks, password_bytes, salt)
+        #blocks = self._expand(password_bytes, salt)
+        #self._mix(blocks, password_bytes, salt)
+        #hash_bytes = self._squeeze(blocks, password_bytes, salt)
+
+       	hash_bytes = argon2.low_level.hash_secret_raw(
+        	secret=password_bytes,
+        	salt=salt,
+	        time_cost=max(1, int(self.time_cost)),
+	        memory_cost=max(8, int(self.memory_cost_kb)),
+	        parallelism=max(1, int(self.parallelism)),
+	        hash_len=32,
+	        type=argon2.low_level.Type.ID,
+	        version=argon2.low_level.ARGON2_VERSION,
+	        )
 
         elapsed_ms = (time.perf_counter() - start) * 1000
         print(
