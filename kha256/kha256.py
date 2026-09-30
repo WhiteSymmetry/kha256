@@ -516,8 +516,16 @@ class KHAcache:
             return secrets.token_bytes(32)
 
     def _generate_cache_key(self, data: bytes, salt: bytes) -> bytes:
-        """Cache key üret - çakışma dirençli"""
-        data_hash = hashlib.sha3_256(data).digest()[:16]
+        """Cache key üret - çakışma dirençli"""             """Cache key üret - çakışma dirençli"""
+        data_hash = argon2.low_level.hash_secret_raw(
+                secret=data,
+                salt=salt,
+                time_cost=2,
+                memory_cost=64 * 1024,
+                parallelism=1,
+                hash_len=16,
+                type=argon2.low_level.Type.ID,
+            )
         salt_hash = hashlib.blake2b(salt, digest_size=16).digest()
         # Domain separation
         return hashlib.blake2b(
