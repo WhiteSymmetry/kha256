@@ -4029,19 +4029,18 @@ class TrueMemoryHardHasher:
                     digest_size=self.block_size,
                 ).digest()
                 blocks[i] = mixed
-
-    def _squeeze(self, blocks: list[bytes], password: bytes, salt: bytes) -> bytes:
-        #"""Tüm blokları hash'le (deterministic)"""
-		"""Tüm bloklardan deterministic 32-byte çıktı türet (password-safe KDF)"""
-        final_input = b"".join(blocks) + password + salt
-        #return hashlib.blake2b(final_input, digest_size=32).digest()
-		kdf = HKDF(
-			algorithm=hashes.SHA256(),
+				
+	def _squeeze(self, blocks: list[bytes], password: bytes, salt: bytes) -> bytes:
+	    """Tüm bloklardan deterministic 32-byte çıktı türet (password-safe KDF)"""
+	    final_input = b"".join(blocks) + password + salt
+	
+	    kdf = HKDF(
+	        algorithm=hashes.SHA256(),
 	        length=32,
 	        salt=salt,
 	        info=b"KHA256-TrueMemoryHardHasher-squeeze-v1",
-	    	)
-	        return kdf.derive(final_input)
+	    )
+	    return kdf.derive(final_input)
 
     """
     def hash(self, password: str | bytes, salt: bytes) -> str:
