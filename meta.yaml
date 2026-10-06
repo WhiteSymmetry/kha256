@@ -4,8 +4,8 @@ package:
   version: "0.4.8"
 
 source:
-  url: ""
-  blake2b-256: ""
+  url:
+  blake2b-256:
   exclude:
     - docs/*
     - notebooks/*
