@@ -10533,7 +10533,9 @@ def example_practical_use_cases():
     token_hasher = K12Hasher(output_length=48, custom=secret_salt)
     api_token = token_hasher.hash_hex(user_email + "|api|v1")
     print(f"Kullanıcı : {user_email}")
-    print(f"API Token : {api_token}")
+    masked_token = f"{api_token[:6]}...{api_token[-4:]}" if len(api_token) > 10 else "[REDACTED]"
+    print(f"API Token : {masked_token}")
+    #print(f"API Token : {api_token}")
 
     # --- Senaryo 2: Veri bütünlüğü kontrolü ---
     print("\n[Senaryo 2] Veri Bütünlüğü (Integrity Check)")
