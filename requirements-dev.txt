@@ -17,3 +17,4 @@ scipy
 aiohttp
 python-dotenv
 nest-asyncio2
+tqdm
