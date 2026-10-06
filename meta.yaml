@@ -1,7 +1,7 @@
 # meta.yaml
 package:
   name: kha256
-  version: "0.0.0"
+  version: "0.4.8"
 
 source:
   url: ""
