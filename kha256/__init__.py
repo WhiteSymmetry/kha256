@@ -43,7 +43,7 @@ try:
     __author__ = _meta_dict.get("Author-email", "Mehmet Keçeci <mkececi@yaani.com>")
     __license__ = _meta_dict.get("License", "AGPL-3.0-or-later")
 except Exception:
-    __version__ = "0.4.7"
+    __version__ = "0.4.8"
     __author__ = "Mehmet Keçeci"
     __license__ = "AGPL-3.0-or-later"
 
@@ -133,6 +133,7 @@ from .kha256 import (  # Main hash classes and engines; Core engines and configu
     TransformFunctions,
     TrueMemoryHardConfig,
     TrueMemoryHardHasher,
+    K12Hasher,
     _balloon_expand,
     _balloon_mix,
     _fallback_bytes,
@@ -281,6 +282,23 @@ from .kha256 import (  # Main hash classes and engines; Core engines and configu
     verify_password,
     xor_bytes,
     xxh64_hash,
+    k12_hash, k12_128, k12_256, k12_512, test_k12,
+    print_header,
+    example_basic_usage,
+    example_class_usage,
+    example_file_hashing,
+    example_streaming_like,
+    example_practical_use_cases,
+    k12_mac_verify,
+    k12_mac_hex,
+    k12_mac,
+    _to_bytes,
+    mac_verification_demo,
+    visualize_hash_distribution,
+    benchmark_mac_vs_hash,
+    benchmark_output_lengths,
+    benchmark_hash_speeds,
+    k12_file_hash_progress,
 )
 
 # ======================================================================
