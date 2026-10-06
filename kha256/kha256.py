@@ -23,8 +23,9 @@ and mathematical constants.
 # conda install -c conda-forge aiohttp argon2-cffi python-dotenv nest-asyncio2 bcrypt blake3 kececinumbers pycryptodome python-xxhash pandas numpy cryptography pandas ipywidgets ipython scipy
 # pip install xxhash: # xxh32 collision riski yüksek (64-bit için ~yüz milyonlarda %0.03)
 
-* 0.3.7. qKHA256: quantum random
-* 0.3.9. mqKHA256: multi-quantum random
+* 0.3.7: qKHA256: quantum random
+* 0.3.9: mqKHA256: multi-quantum random
+* 0.4.8: KangarooTwelve as K12
 
 """
 
@@ -39,6 +40,7 @@ from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from Crypto.Cipher import ChaCha20 # pip install -U pycryptodome # conda install conda-forge::pycryptodome
 from Crypto.Hash import SHAKE256
+from Crypto.Hash import KangarooTwelve as K12
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
@@ -78,6 +80,13 @@ import traceback
 import uuid
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Literal, NamedTuple, Optional, overload, Tuple, Union, cast
 import xxhash
+
+# tqdm varsa güzel progress bar kullan
+try:
+    from tqdm import tqdm
+    HAS_TQDM = True
+except ImportError:
+    HAS_TQDM = False
 
 #from . import __version__  # paket __init__.py'de tanımlı
 from ._version import __version__, __author__, __license__
@@ -10035,7 +10044,705 @@ def test_shake256():
     shake256_hash(large_data, 32)
     elapsed = time.time() - start
 
-    print(f"\nPerformans: 1MB veri için {elapsed:.3f} saniye")
+    print(f"\nPerformans: 1MB veri için {elapsed:.6f} saniye")
+
+
+class K12Hasher:
+    """KangarooTwelve (K12) hash sınıfı - ek özelliklerle
+    
+    from Crypto.Hash import KangarooTwelve as K12
+    """
+
+    def __init__(self, output_length: int = 32, custom: bytes = b""):
+        """
+        KangarooTwelve hasher başlatıcı
+        
+        Args:
+            output_length: Varsayılan çıktı uzunluğu (bytes)
+            custom: Domain separation için varsayılan customization string (bytes veya str)
+        """
+        self.default_output_length = output_length
+        self.default_custom = _to_bytes(custom)
+
+    def hash(self, data, output_length=None, custom=None):
+        """
+        Veriyi hash'ler
+        
+        Args:
+            data: Hash'lenecek veri
+            output_length: Çıktı uzunluğu (None ise varsayılan kullanılır)
+            custom: Customization string (None ise varsayılan kullanılır)
+            
+        Returns:
+            bytes: Hash değeri
+        """
+        if output_length is None:
+            output_length = self.default_output_length
+        if custom is None:
+            custom = self.default_custom
+        return k12_hash(data, output_length, custom)
+
+    def hash_hex(self, data, output_length=None, custom=None):
+        """Hash'i hex string olarak döndür"""
+        return self.hash(data, output_length, custom).hex()
+
+    def hash_int(self, data, output_length=None, custom=None):
+        """Hash'i integer olarak döndür"""
+        return int.from_bytes(self.hash(data, output_length, custom), byteorder="big")
+
+    def file_hash(self, filepath, output_length=32, custom=b""):
+        """Dosyanın hash'ini hesaplar"""
+        with open(filepath, "rb") as f:
+            return k12_hash(f.read(), output_length, custom)
+
+    def mac(self, key, data, output_length=None, custom=None) -> bytes:
+        """Keyed hashing (MAC) üretir"""
+        if output_length is None:
+            output_length = self.default_output_length
+        if custom is None:
+            custom = self.default_custom
+        return k12_mac(key, data, output_length, custom)
+
+    def mac_hex(self, key, data, output_length=None, custom=None) -> str:
+        return self.mac(key, data, output_length, custom).hex()
+
+    def mac_verify(self, key, data, mac: bytes, custom=None) -> bool:
+        if custom is None:
+            custom = self.default_custom
+        return k12_mac_verify(key, data, mac, custom)
+
+    # ----------------------------------------------------------
+    #  Temel Hash Metodları
+    # ----------------------------------------------------------
+    def hash(self, data, output_length=None, custom=None) -> bytes:
+        if output_length is None:
+            output_length = self.default_output_length
+        if custom is None:
+            custom = self.default_custom
+        return k12_hash(data, output_length, custom)
+
+    def hash_hex(self, data, output_length=None, custom=None) -> str:
+        return self.hash(data, output_length, custom).hex()
+
+    def hash_int(self, data, output_length=None, custom=None) -> int:
+        return int.from_bytes(self.hash(data, output_length, custom), byteorder="big")
+
+    # ----------------------------------------------------------
+    #  Keyed Hashing (MAC)
+    # ----------------------------------------------------------
+    def mac(self, key, data, output_length=None, custom=None) -> bytes:
+        if output_length is None:
+            output_length = self.default_output_length
+        if custom is None:
+            custom = self.default_custom
+        return k12_mac(key, data, output_length, custom)
+
+    def mac_hex(self, key, data, output_length=None, custom=None) -> str:
+        return self.mac(key, data, output_length, custom).hex()
+
+    def mac_verify(self, key, data, mac: bytes, custom=None) -> bool:
+        if custom is None:
+            custom = self.default_custom
+        return k12_mac_verify(key, data, mac, custom)
+
+    # ----------------------------------------------------------
+    #  Dosya Hashleme
+    # ----------------------------------------------------------
+    def file_hash(self, filepath: str, output_length: int = 32, custom: bytes = b"") -> bytes:
+        """Basit dosya hashleme (progress bar yok)"""
+        with open(filepath, "rb") as f:
+            return k12_hash(f.read(), output_length, custom)
+
+    def file_hash_progress(self,
+                           filepath: str,
+                           output_length: int = None,
+                           custom: bytes = None,
+                           chunk_size: int = 1024 * 1024) -> bytes:
+        """
+        Canlı progress bar'lı dosya hashleme.
+        
+        Args:
+            filepath      : Dosya yolu
+            output_length : Hash uzunluğu (None → sınıf varsayılanı)
+            custom        : Customization string (None → sınıf varsayılanı)
+            chunk_size    : Okuma parçası boyutu (varsayılan 1 MB)
+        """
+        if output_length is None:
+            output_length = self.default_output_length
+        if custom is None:
+            custom = self.default_custom
+
+        return k12_file_hash_progress(
+            filepath=filepath,
+            output_length=output_length,
+            custom=custom,
+            chunk_size=chunk_size
+        )
+
+    def file_hash_progress_hex(self, filepath: str, output_length=None, custom=None, chunk_size=1024*1024) -> str:
+        return self.file_hash_progress(filepath, output_length, custom, chunk_size).hex()
+
+def k12_file_hash_progress(filepath: str,
+                           output_length: int = 32,
+                           custom: bytes = b"",
+                           chunk_size: int = 1024 * 1024) -> bytes:
+    """Canlı progress bar'lı dosya hashleme (bağımsız fonksiyon)"""
+    path = Path(filepath)
+    if not path.is_file():
+        raise FileNotFoundError(f"Dosya bulunamadı: {filepath}")
+
+    file_size = path.stat().st_size
+    custom = _to_bytes(custom)
+
+    if file_size == 0:
+        k12 = K12.new(custom=custom)
+        return k12.read(output_length)
+
+    k12 = K12.new(custom=custom)
+    start_time = time.perf_counter()
+
+    print(f"\nDosya        : {path.name}")
+    print(f"Boyut        : {file_size / (1024*1024):.2f} MB")
+    print(f"Chunk size   : {chunk_size / 1024:.0f} KB")
+    print(f"Custom       : {custom.decode(errors='ignore') if custom else '(boş)'}")
+    print("-" * 55)
+
+    with open(path, "rb") as f:
+        if HAS_TQDM:
+            with tqdm(total=file_size, unit="B", unit_scale=True,
+                      unit_divisor=1024, desc="Hashleniyor", ncols=80, colour="green") as pbar:
+                while True:
+                    chunk = f.read(chunk_size)
+                    if not chunk:
+                        break
+                    k12.update(chunk)
+                    pbar.update(len(chunk))
+        else:
+            bytes_read = 0
+            while True:
+                chunk = f.read(chunk_size)
+                if not chunk:
+                    break
+                k12.update(chunk)
+                bytes_read += len(chunk)
+
+                percent = (bytes_read / file_size) * 100
+                bar_len = 40
+                filled = int(bar_len * bytes_read // file_size)
+                bar = "█" * filled + "░" * (bar_len - filled)
+                speed = bytes_read / (time.perf_counter() - start_time + 1e-6) / (1024*1024)
+
+                sys.stdout.write(f"\r[{bar}] {percent:5.1f}%  {speed:5.1f} MB/s")
+                sys.stdout.flush()
+            print()
+
+    digest = k12.read(output_length)
+    elapsed = time.perf_counter() - start_time
+    speed = file_size / elapsed / (1024 * 1024)
+
+    print("-" * 55)
+    print(f"Süre         : {elapsed:.3f} saniye")
+    print(f"Hız          : {speed:.2f} MB/s")
+    print(f"Hash ({output_length}B) : {digest.hex()}")
+    print("-" * 55)
+
+    return digest
+
+
+def k12_hash(data, output_length=32, custom=b""):
+    """
+    KangarooTwelve değişken çıktı uzunluklu hash fonksiyonu.
+    
+    Args:
+        data: Hash'lenecek veri (bytes veya string)
+        output_length: İstenen çıktı uzunluğu (bytes cinsinden)
+        custom: Domain separation için customization string (bytes veya string)
+        
+    Returns:
+        bytes: Belirtilen uzunlukta hash değeri
+        
+    Raises:
+        ValueError: output_length negatif veya çok büyükse
+    """
+    # Çıktı uzunluğu kontrolü
+    if output_length <= 0:
+        raise ValueError("Çıktı uzunluğu pozitif olmalı")
+    if output_length > 2**32:  # Makul bir üst sınır
+        raise ValueError("Çıktı uzunluğu çok büyük")
+
+    # Eğer data string ise bytes'a çevir
+    if isinstance(data, str):
+        data = data.encode("utf-8")
+    elif not isinstance(data, (bytes, bytearray, memoryview)):
+        data = str(data).encode("utf-8")
+
+    # Customization string'i de bytes'a çevir
+    if isinstance(custom, str):
+        custom = custom.encode("utf-8")
+    elif not isinstance(custom, (bytes, bytearray)):
+        custom = str(custom).encode("utf-8")
+
+    # KangarooTwelve hash objesi oluştur
+    kangaroo = K12.new(custom=custom)
+    
+    # Veriyi güncelle
+    kangaroo.update(data)
+    
+    # Belirtilen uzunlukta hash değerini al
+    return kangaroo.read(output_length)
+
+
+# Kısa kullanım için yardımcı fonksiyonlar
+def k12_128(data, custom=b""):
+    """128 bit (16 byte) KangarooTwelve hash"""
+    return k12_hash(data, 16, custom)
+
+
+def k12_256(data, custom=b""):
+    """256 bit (32 byte) KangarooTwelve hash"""
+    return k12_hash(data, 32, custom)
+
+
+def k12_512(data, custom=b""):
+    """512 bit (64 byte) KangarooTwelve hash"""
+    return k12_hash(data, 64, custom)
+
+def _to_bytes(data: Union[str, bytes, bytearray]) -> bytes:
+    """String veya byte-like veriyi bytes'a çevirir"""
+    if isinstance(data, str):
+        return data.encode("utf-8")
+    if isinstance(data, (bytes, bytearray, memoryview)):
+        return bytes(data)
+    return str(data).encode("utf-8")
+
+
+def k12_mac(key: Union[str, bytes], data: Union[str, bytes],
+            output_length: int = 32, custom: bytes = b"") -> bytes:
+    """
+    KangarooTwelve tabanlı keyed hashing (MAC).
+    
+    Güvenli ve pratik yapı:
+    - Key önce özümsenir
+    - Ardından domain separator + data gelir
+    - Customization string ile ekstra domain separation sağlanabilir
+    
+    Args:
+        key: Gizli anahtar
+        data: Hashlenecek / MAC'lenecek veri
+        output_length: Çıktı uzunluğu (byte)
+        custom: Opsiyonel ekstra domain (ör: b"API", b"Session" vb.)
+        
+    Returns:
+        bytes: MAC değeri
+    """
+    if output_length <= 0:
+        raise ValueError("output_length pozitif olmalı")
+
+    key = _to_bytes(key)
+    data = _to_bytes(data)
+    custom = _to_bytes(custom)
+
+    # Key'i customization olarak kullanmak yerine input'a gömüyoruz
+    # (daha esnek ve uzun key'lere izin verir)
+    k12 = K12.new(custom=custom)
+    
+    # Key + length encoding benzeri ayırıcı + data
+    # Basit ama etkili bir ayırıcı: key uzunluğunu 8 byte big-endian olarak ekliyoruz
+    key_len = len(key).to_bytes(8, byteorder="big")
+    k12.update(key)
+    k12.update(key_len)
+    k12.update(b"|K12MAC|")          # domain separator
+    k12.update(data)
+    
+    return k12.read(output_length)
+
+
+def k12_mac_hex(key, data, output_length=32, custom=b"") -> str:
+    """MAC sonucunu hex string olarak döndürür"""
+    return k12_mac(key, data, output_length, custom).hex()
+
+
+def k12_mac_verify(key, data, mac: bytes, custom=b"") -> bool:
+    """
+    Verilen MAC değerinin doğru olup olmadığını kontrol eder.
+    Timing-attack'a karşı dayanıklı karşılaştırma kullanır.
+    """
+    import hmac as hmac_lib
+    expected = k12_mac(key, data, len(mac), custom)
+    return hmac_lib.compare_digest(expected, mac)
+
+
+# Test fonksiyonu
+def test_k12():
+    """KangarooTwelve fonksiyonlarını test et"""
+    test_cases = [
+        ("", "Boş string"),
+        ("a", "Tek karakter"),
+        ("abc", "Kısa string"),
+        ("Hello World!", "Noktalama ile"),
+        ("x" * 1000, "Uzun string"),
+    ]
+
+    print("KangarooTwelve (K12) Test Sonuçları:")
+    print("=" * 60)
+
+    for data, description in test_cases:
+        print(f"\nTest: {description}")
+        print(f"Veri: '{data[:50]}{'...' if len(data) > 50 else ''}'")
+
+        # Farklı uzunluklarda hash
+        for length in [16, 32, 64]:
+            hash_val = k12_hash(data, length)
+            print(f"  {length} byte: {hash_val.hex()[:40]}...")
+
+        # Customization string ile örnek
+        hash_custom = k12_hash(data, 32, custom=b"TestDomain")
+        print(f"  Custom ile: {hash_custom.hex()[:40]}...")
+
+    # Performans testi
+    import time
+    large_data = "x" * 1_000_000  # 1MB veri
+    start = time.time()
+    k12_hash(large_data, 32)
+    elapsed = time.time() - start
+    print(f"\nPerformans: 1MB veri için {elapsed:.6f} saniye")
+
+
+def print_header(title: str):
+    print("\n" + "=" * 70)
+    print(f"  {title}")
+    print("=" * 70)
+
+
+def example_basic_usage():
+    """1. Temel kullanım örnekleri"""
+    print_header("1. TEMEL KULLANIM")
+
+    data = "KangarooTwelve ile güvenli hashleme örneği"
+
+    # Farklı uzunluklarda hash
+    print(f"Veri          : {data}")
+    print(f"k12_128       : {k12_128(data).hex()}")
+    print(f"k12_256       : {k12_256(data).hex()}")
+    print(f"k12_512       : {k12_512(data).hex()[:64]}...")
+
+    # Customization string ile (domain separation)
+    print("\n--- Domain Separation (Customization) ---")
+    hash1 = k12_256(data, custom=b"UygulamaA")
+    hash2 = k12_256(data, custom=b"UygulamaB")
+    hash3 = k12_256(data, custom=b"")  # boş custom
+
+    print(f"Custom 'UygulamaA': {hash1.hex()}")
+    print(f"Custom 'UygulamaB': {hash2.hex()}")
+    print(f"Custom boş       : {hash3.hex()}")
+    print(f"Hash'ler farklı mı? {hash1 != hash2 != hash3}")
+
+
+def example_class_usage():
+    """2. Sınıf (K12Hasher) kullanımı"""
+    print_header("2. K12Hasher SINIFI KULLANIMI")
+
+    # Farklı domain'ler için ayrı hasher'lar oluştur
+    auth_hasher = K12Hasher(output_length=32, custom=b"AuthService")
+    log_hasher = K12Hasher(output_length=16, custom=b"LogService")
+    file_hasher = K12Hasher(output_length=64, custom=b"FileIntegrity")
+
+    password = "GizliSifre123!"
+    log_entry = "2026-10-06 03:05:12 User login successful"
+    file_content = b"Bu bir ornek dosya icerigidir."
+
+    print(f"Auth hash (32B) : {auth_hasher.hash_hex(password)}")
+    print(f"Log hash  (16B) : {log_hasher.hash_hex(log_entry)}")
+    print(f"File hash (64B) : {file_hasher.hash_hex(file_content)[:64]}...")
+
+    # Integer olarak alma (örneğin ID üretimi için)
+    user_id = auth_hasher.hash_int("kullanici@ornek.com")
+    print(f"\nKullanıcı ID (int): {user_id}")
+
+
+def example_file_hashing():
+    """3. Dosya hashleme örneği"""
+    print_header("3. DOSYA HASHLEME")
+
+    # Geçici bir test dosyası oluştur
+    test_file = Path("temp_k12_test.txt")
+    content = "Bu dosya KangarooTwelve ile hashleniyor.\n" * 50
+    test_file.write_text(content, encoding="utf-8")
+
+    try:
+        hasher = K12Hasher(custom=b"FileCheck")
+
+        # Dosya hash'i
+        file_digest = hasher.file_hash(str(test_file), output_length=32)
+        print(f"Dosya          : {test_file}")
+        print(f"Boyut          : {test_file.stat().st_size} byte")
+        print(f"K12 Hash (32B) : {file_digest.hex()}")
+
+        # Aynı dosyayı farklı custom ile hashle
+        other_digest = k12_hash(test_file.read_bytes(), 32, custom=b"BackupCheck")
+        print(f"Farklı custom  : {other_digest.hex()}")
+        print(f"Hash'ler eşit mi? {file_digest == other_digest}")
+
+    finally:
+        # Temizlik
+        if test_file.exists():
+            test_file.unlink()
+            print("\nGeçici dosya silindi.")
+
+
+def example_streaming_like():
+    """4. Büyük veri / parça parça hashleme simülasyonu"""
+    print_header("4. BÜYÜK VERİ HASHLEME (Simülasyon)")
+
+    # Gerçek streaming için Crypto.Hash.KangarooTwelve doğrudan kullanılır
+    # çünkü sınıfımız şu an tek seferde update ediyor.
+    # Aşağıda hem sınıf hem de düşük seviye kullanım gösteriliyor.
+
+    large_data = os.urandom(2_000_000)  # 2 MB rastgele veri
+
+    # Yöntem 1: Doğrudan k12_hash (kolay)
+    start = time.perf_counter()
+    digest1 = k12_hash(large_data, 32, custom=b"BulkHash")
+    t1 = time.perf_counter() - start
+
+    # Yöntem 2: Düşük seviye (streaming benzeri)
+    start = time.perf_counter()
+    k12 = K12.new(custom=b"BulkHash")
+    # Veriyi parçalara bölerek update et (gerçek streaming senaryosu)
+    chunk_size = 64 * 1024  # 64 KB
+    for i in range(0, len(large_data), chunk_size):
+        k12.update(large_data[i:i + chunk_size])
+    digest2 = k12.read(32)
+    t2 = time.perf_counter() - start
+
+    print(f"Veri boyutu     : {len(large_data) / 1_000_000:.1f} MB")
+    print(f"k12_hash süresi : {t1*1000:.2f} ms  → {digest1.hex()}")
+    print(f"Streaming süresi: {t2*1000:.2f} ms  → {digest2.hex()}")
+    print(f"Sonuçlar aynı mı? {digest1 == digest2}")
+
+
+def example_practical_use_cases():
+    """5. Pratik kullanım senaryoları"""
+    print_header("5. PRATİK KULLANIM SENARYOLARI")
+
+    # --- Senaryo 1: API Key / Token üretimi ---
+    print("\n[Senaryo 1] API Token Üretimi")
+    user_email = "aaaa@aaaaaa.aaa"
+    secret_salt = b"SuperSecretSalt2026"
+    
+    token_hasher = K12Hasher(output_length=48, custom=secret_salt)
+    api_token = token_hasher.hash_hex(user_email + "|api|v1")
+    print(f"Kullanıcı : {user_email}")
+    print(f"API Token : {api_token}")
+
+    # --- Senaryo 2: Veri bütünlüğü kontrolü ---
+    print("\n[Senaryo 2] Veri Bütünlüğü (Integrity Check)")
+    original_data = {
+        "id": 1001,
+        "name": "Önemli Doküman",
+        "content": "Bu dokümanın değişmemesi gerekiyor."
+    }
+    serialized = json.dumps(original_data, sort_keys=True, ensure_ascii=False)
+    
+    integrity_hash = k12_256(serialized, custom=b"DocumentIntegrity")
+    print(f"Doküman Hash: {integrity_hash.hex()}")
+
+    # Değiştirilmiş veri
+    tampered = original_data.copy()
+    tampered["content"] = "Bu doküman değiştirildi!"
+    tampered_serialized = json.dumps(tampered, sort_keys=True, ensure_ascii=False)
+    tampered_hash = k12_256(tampered_serialized, custom=b"DocumentIntegrity")
+    
+    print(f"Değişen Hash: {tampered_hash.hex()}")
+    print(f"Bütünlük bozuldu mu? {integrity_hash != tampered_hash}")
+
+    # --- Senaryo 3: Farklı domain'lerde aynı veriyi hashleme ---
+    print("\n[Senaryo 3] Domain Separation Örneği")
+    shared_secret = "ortak_gizli_deger"
+    
+    domains = [b"password_reset", b"email_verify", b"session_token"]
+    for domain in domains:
+        h = k12_256(shared_secret, custom=domain)
+        print(f"  {domain.decode():<18} → {h.hex()}")
+
+# ============================================================
+#  GRAFİKSEL TEST FONKSİYONLARI
+# ============================================================
+
+def benchmark_hash_speeds():
+    """Farklı veri boyutlarında K12 hash hızını ölçer"""
+    print_header("Grafik 1: Hash Performansı (Farklı Veri Boyutları)")
+
+    sizes = [1024, 10_240, 102_400, 1_024_000, 2_048_000]  # 1KB → 2MB
+    labels = ["1 KB", "10 KB", "100 KB", "1 MB", "2 MB"]
+    times = []
+
+    for size in sizes:
+        data = os.urandom(size)
+        start = time.perf_counter()
+        for _ in range(5):                          # 5 kez ölç, ortalamasını al
+            k12_hash(data, 32)
+        elapsed = (time.perf_counter() - start) / 5
+        times.append(elapsed * 1000)                # ms cinsinden
+        print(f"  {labels[sizes.index(size)]:>6} → {elapsed*1000:7.2f} ms")
+
+    # Grafik
+    plt.figure(figsize=(10, 5))
+    bars = plt.bar(labels, times, color="#4C72B0", edgecolor="black")
+    plt.title("KangarooTwelve Hash Performansı", fontsize=14, fontweight="bold")
+    plt.ylabel("Süre (ms)")
+    plt.xlabel("Veri Boyutu")
+    plt.grid(axis="y", alpha=0.3)
+
+    for bar, t in zip(bars, times):
+        plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.1,
+                 f"{t:.2f}", ha="center", va="bottom", fontsize=9)
+
+    plt.tight_layout()
+    plt.savefig("k12_performance.png", dpi=150)
+    print("→ Grafik kaydedildi: k12_performance.png")
+    plt.show()
+
+
+def benchmark_output_lengths():
+    """Farklı çıktı uzunluklarının süresini karşılaştırır"""
+    print_header("Grafik 2: Çıktı Uzunluğuna Göre Süre")
+
+    data = os.urandom(500_000)  # 500 KB sabit veri
+    lengths = [16, 32, 64, 128, 256, 512]
+    times = []
+
+    for length in lengths:
+        start = time.perf_counter()
+        for _ in range(10):
+            k12_hash(data, length)
+        elapsed = (time.perf_counter() - start) / 10
+        times.append(elapsed * 1000)
+        print(f"  {length:3} byte → {elapsed*1000:6.2f} ms")
+
+    plt.figure(figsize=(9, 5))
+    plt.plot(lengths, times, marker="o", linewidth=2, color="#55A868")
+    plt.title("Çıktı Uzunluğuna Göre Hash Süresi (500 KB veri)", fontsize=13, fontweight="bold")
+    plt.xlabel("Çıktı Uzunluğu (byte)")
+    plt.ylabel("Süre (ms)")
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig("k12_output_length.png", dpi=150)
+    print("→ Grafik kaydedildi: k12_output_length.png")
+    plt.show()
+
+
+def benchmark_mac_vs_hash():
+    """Normal hash ile keyed MAC süresini karşılaştırır"""
+    print_header("Grafik 3: Hash vs Keyed MAC Karşılaştırması")
+
+    sizes = [10_000, 100_000, 500_000, 1_000_000]
+    labels = ["10 KB", "100 KB", "500 KB", "1 MB"]
+    hash_times = []
+    mac_times = []
+    key = b"SuperSecretKeyForMAC2026!"
+
+    for size in sizes:
+        data = os.urandom(size)
+
+        # Normal hash
+        start = time.perf_counter()
+        for _ in range(8):
+            k12_hash(data, 32)
+        hash_times.append((time.perf_counter() - start) / 8 * 1000)
+
+        # Keyed MAC
+        start = time.perf_counter()
+        for _ in range(8):
+            k12_mac(key, data, 32)
+        mac_times.append((time.perf_counter() - start) / 8 * 1000)
+
+        print(f"  {labels[sizes.index(size)]:>7} | Hash: {hash_times[-1]:6.2f} ms | MAC: {mac_times[-1]:6.2f} ms")
+
+    x = np.arange(len(labels))
+    width = 0.35
+
+    plt.figure(figsize=(10, 5))
+    plt.bar(x - width/2, hash_times, width, label="k12_hash", color="#4C72B0")
+    plt.bar(x + width/2, mac_times, width, label="k12_mac (keyed)", color="#C44E52")
+    plt.xticks(x, labels)
+    plt.ylabel("Süre (ms)")
+    plt.title("Normal Hash vs Keyed MAC Performansı", fontsize=13, fontweight="bold")
+    plt.legend()
+    plt.grid(axis="y", alpha=0.3)
+    plt.tight_layout()
+    plt.savefig("k12_hash_vs_mac.png", dpi=150)
+    print("→ Grafik kaydedildi: k12_hash_vs_mac.png")
+    plt.show()
+
+
+def visualize_hash_distribution():
+    """Aynı verinin farklı custom değerleriyle ürettiği hash'lerin byte dağılımını gösterir"""
+    print_header("Grafik 4: Hash Byte Dağılımı (Domain Separation)")
+
+    data = b"KangarooTwelve Domain Separation Test"
+    customs = [b"", b"Auth", b"Log", b"File", b"API", b"Session"]
+    hashes = [k12_hash(data, 32, custom=c) for c in customs]
+
+    # Her hash'in ilk 16 byte'ını alıp heatmap gibi göster
+    matrix = np.array([[b for b in h[:16]] for h in hashes])
+
+    plt.figure(figsize=(12, 4))
+    plt.imshow(matrix, cmap="viridis", aspect="auto")
+    plt.colorbar(label="Byte Değeri (0-255)")
+    plt.yticks(range(len(customs)), [c.decode() or "(boş)" for c in customs])
+    plt.xlabel("Hash Byte Pozisyonu (ilk 16 byte)")
+    plt.title("Farklı Customization String'lerle Hash Byte Dağılımı", fontsize=13, fontweight="bold")
+    plt.tight_layout()
+    plt.savefig("k12_hash_distribution.png", dpi=150)
+    print("→ Grafik kaydedildi: k12_hash_distribution.png")
+    plt.show()
+
+
+def mac_verification_demo():
+    """MAC doğrulama örneği + basit başarı/başarısızlık görseli"""
+    print_header("Grafik 5: MAC Doğrulama Sonuçları")
+
+    key = b"GizliAnahtar2026"
+    messages = [
+        "Kullanıcı girişi başarılı",
+        "Şifre sıfırlama isteği",
+        "E-posta doğrulama kodu",
+        "Oturum token yenileme",
+        "Dosya indirme izni"
+    ]
+
+    results = []
+    for msg in messages:
+        mac = k12_mac(key, msg, 32)
+        # Doğru doğrulama
+        ok = k12_mac_verify(key, msg, mac)
+        # Yanlış key ile deneme
+        wrong = k12_mac_verify(b"YanlisKey", msg, mac)
+        results.append((msg[:25], ok, wrong))
+        print(f"  {msg[:30]:<32} | Doğru key: {ok} | Yanlış key: {wrong}")
+
+    # Basit bar grafik
+    labels = [r[0] for r in results]
+    correct = [1 if r[1] else 0 for r in results]
+    incorrect = [1 if r[2] else 0 for r in results]
+
+    x = np.arange(len(labels))
+    width = 0.35
+
+    plt.figure(figsize=(11, 5))
+    plt.bar(x - width/2, correct, width, label="Doğru Key → Başarılı", color="#55A868")
+    plt.bar(x + width/2, incorrect, width, label="Yanlış Key → Başarısız", color="#C44E52")
+    plt.xticks(x, labels, rotation=15, ha="right")
+    plt.ylabel("Sonuç (1 = True)")
+    plt.title("K12 MAC Doğrulama Testi", fontsize=13, fontweight="bold")
+    plt.ylim(0, 1.3)
+    plt.legend()
+    plt.grid(axis="y", alpha=0.3)
+    plt.tight_layout()
+    plt.savefig("k12_mac_verify.png", dpi=150)
+    print("→ Grafik kaydedildi: k12_mac_verify.png")
+    plt.show()
 
 
 # ======================
