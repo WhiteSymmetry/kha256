@@ -103,8 +103,9 @@
 
 ---
 
-* 0.3.9. mqKHA256: multi-quantum random
-* 0.3.7. qKHA256: quantum random
+* 0.3.9: mqKHA256: multi-quantum random
+* 0.3.7: qKHA256: quantum random
+* 0.4.8: KangarooTwelve as K12
 
 ---
 
