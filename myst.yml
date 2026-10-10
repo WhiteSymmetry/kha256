@@ -3,7 +3,7 @@ version: 1
 project:
   id: c54a8c8e-c3f5-4627-8390-67c9064549bb
   title: kha256
-  description: "kha256"
+  description: "Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256"
   keywords: [kha256]
   authors: [Mehmet Keçeci]
   github: https://github.com/WhiteSymmetry/kha256
