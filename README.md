@@ -2,7 +2,9 @@
 
 ---
 
-# KHA-256 <img src="https://github.com/WhiteSymmetry/kha256/blob/main/docs/kha256.jpg" alt="logo" align="right" height="140"/>
+# KHA-256 <img src="https://github.com/WhiteSymmetry/kha256/blob/main/docs/logo.png" alt="logo" align="right" height="140"/>
+
+<link rel="icon" href="https://github.com/WhiteSymmetry/kha256/blob/main/docs/favicon.ico" sizes="any">
 
 ## KEÇECİ HASH ALGORİTMASI (KHA-256) 🇹🇷/Eng
 
