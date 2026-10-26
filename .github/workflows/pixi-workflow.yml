@@ -1,4 +1,4 @@
-name: Pixi CI
+name: Pixi CI-https://prefix.dev/channels/bilgi
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         # 🚀 Tüm ana işletim sistemlerini matrise ekledik
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         python-version: ["3.14"]
       fail-fast: false
 
