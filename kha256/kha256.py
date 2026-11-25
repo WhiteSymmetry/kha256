@@ -26,12 +26,14 @@ and mathematical constants.
 * 0.3.7: qKHA256: quantum random
 * 0.3.9: mqKHA256: multi-quantum random
 * 0.4.8: KangarooTwelve as K12
+* 0.4.9: kha256sum – KHA-256 hash + sha256sum benzeri CLI
 
 """
 
 from __future__ import annotations
 
 import argon2 # pip install argon2-cffi # conda install conda-forge::argon2-cffi
+import argparse
 import asyncio
 import bcrypt
 from blake3 import blake3
@@ -16030,6 +16032,122 @@ def run_all_tests():
 
     return summary
 
+class kha256sum:
+    """
+    kha256sum – KHA-256 hash + sha256sum benzeri CLI
+    hashlib.sha256 ile aynı arayüz + verify metodu.
+
+    Kullanım:
+        # Python
+        from kha256sum import kha256sum
+        kha256sum("hello").hexdigest()
+
+        # CLI – hash üret
+        python -m kha256sum dosya.txt
+
+        # CLI – doğrula (stdin)
+        echo '145abec6...  dosya.txt' | python -m kha256sum --check
+
+        # CLI – doğrula (dosyadan)
+        python -m kha256sum --check dosya.txt.kha
+
+        from kha256 import kha256sum
+        kha256sum.hash_file("kha256sum.py")       # → '507abc...'
+        kha256sum("hello").hexdigest()             # → 'a1b2c3...'
+        kha256sum.verify_file("kha256sum.py", "50...")  # True/False
+    """
+
+    def __init__(self, data: Union[str, bytes] = b""):
+        self._buf = bytearray()
+        if data:
+            self.update(data)
+
+    def update(self, data: Union[str, bytes]) -> None:
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+        self._buf.extend(data)
+
+    def hexdigest(self) -> str:
+        return quick_hash(bytes(self._buf))
+
+    def digest(self) -> bytes:
+        return bytes.fromhex(self.hexdigest())
+
+    @property
+    def digest_size(self) -> int:
+        return 32
+
+    @property
+    def name(self) -> str:
+        return "KHA-256"
+
+    def verify(self, expected: str) -> bool:
+        """Verilen hex hash ile sabit-zamanlı karşılaştırma."""
+        return hmac.compare_digest(
+            self.hexdigest().lower(), expected.lower().strip()
+        )
+
+    @classmethod
+    def verify_file(cls, path: str, expected: str) -> bool:
+        """Dosya hash'ini beklenen değerle karşılaştırır."""
+        with open(path, "rb") as f:
+            return cls(f.read()).verify(expected)
+
+    @classmethod
+    def hash_file(cls, path: str) -> str:
+        """Dosyanın KHA-256 hex hash'ini döndürür."""
+        with open(path, "rb") as f:
+            return cls(f.read()).hexdigest()
+
+    def __repr__(self):
+        return f"<kha256sum {self.hexdigest()[:16]}...>"
+
+
+# ============================================================
+# CLI
+# ============================================================
+
+def _check_line(line: str) -> bool:
+    """Tek satır: 'hash  dosya' → doğrula."""
+    parts = line.split(None, 1)
+    if len(parts) != 2:
+        print(f"  HATALI FORMAT: {line!r}")
+        return False
+    expected, fname = parts
+    try:
+        ok = kha256sum.verify_file(fname, expected)
+    except FileNotFoundError:
+        print(f"{fname}: DOSYA BULUNAMADI")
+        return False
+    print(f"{fname}: {'OK' if ok else 'FAILED'}")
+    return ok
+
+
+def _cli():
+    parser = argparse.ArgumentParser(prog="kha256sum")
+    parser.add_argument("files", nargs="*")
+    parser.add_argument("-c", "--check", action="store_true")
+    args = parser.parse_args()
+
+    if args.check:
+        if args.files:
+            for f in args.files:
+                for line in Path(f).read_text().splitlines():
+                    if line.strip():
+                        _check_line(line)
+        else:
+            # stdin
+            for line in sys.stdin:
+                if line.strip():
+                    _check_line(line.strip())
+    else:
+        if args.files:
+            for f in args.files:
+                h = quick_hash(Path(f).read_bytes())
+                print(f"{h}  {f}")
+        else:
+            data = sys.stdin.buffer.read()
+            print(f"{quick_hash(data)}  (stdin)")
 
 # ============================================================
 # ÖRNEK KULLANIM
