@@ -19,6 +19,8 @@ identifiers:
     value: 10.5281/zenodo.18089401
   - type: doi
     value: 10.5281/zenodo.18156885
+  - type: doi
+    value: 10.13140/RG.2.2.35270.64324
 repository-code: 'https://github.com/WhiteSymmetry/kha256'
 url: 'https://github.com/WhiteSymmetry/kha256'
 repository: 'https://anaconda.org/bilgi/kha256'
@@ -32,5 +34,5 @@ keywords:
   - Keçeci Hash Algoritması
 license: AGPL-3.0-or-later
 commit: 'Revision: 1'
-version: 0.4.8
+version: 0.4.9
 date-released: '2025-12-29'
