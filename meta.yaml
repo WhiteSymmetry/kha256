@@ -4,8 +4,8 @@ package:
   version: "0.5.0"
 
 source:
-  url:
-  blake2b-256:
+  url: https://files.pythonhosted.org/packages/07/6d/534350375e28060bc20c72ddafe69776cb31a6959f13a88a03a6a434ee07/kha256-0.5.0.tar.gz
+  blake2b-256: 076d534350375e28060bc20c72ddafe69776cb31a6959f13a88a03a6a434ee07
   exclude:
     - docs/*
     - notebooks/*
