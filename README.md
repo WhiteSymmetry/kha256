@@ -950,6 +950,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 ```
 
+Keçeci, M. (2026). KHA256: Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256 (0.4.9). Açık Bilim Veri Alanı (ABVA), Aperta. https://aperta.ulakbim.gov.tr/records/303996
+
 Keçeci, M. (2026). kha256: Keçeci Hash Algorithm (Keçeci Hash Algoritması), KHA-256 [Data set]. ResearchGate. https://doi.org/10.13140/RG.2.2.35270.64324
 
 Keçeci, M. (2025). KHA-256: A Next-Generation Cryptographic Hash Function Based on Keçeci Numbers and Mathematical Constants. Open Science Articles (OSAs), Zenodo. https://doi.org/10.5281/zenodo.18156885
