@@ -276,7 +276,7 @@ try:
     from . import __version__
 except ImportError:
     # Dosya doğrudan çalıştırıldığında (Örn: python kha256.py) fallback
-    __version__ = "0.4.8"
+    __version__ = "0.4.9"
 
 
 # Version information
@@ -285,7 +285,7 @@ __author__ = "Mehmet Keçeci"
 __license__ = "AGPL-3.0-or-later"
 __status__ = "Pre-Production"
 __certificate__ = "KHA256-PA-2025-001"
-req_kececinumbers = "1.0.7"
+req_kececinumbers = "1.0.8"
 
 # KeçeciNumbers check - made API compatible
 KHA_AVAILABLE = True
