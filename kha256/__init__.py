@@ -299,6 +299,9 @@ from .kha256 import (  # Main hash classes and engines; Core engines and configu
     benchmark_output_lengths,
     benchmark_hash_speeds,
     k12_file_hash_progress,
+    _check_line,
+    _cli,
+    kha256sum,
 )
 
 # ======================================================================
