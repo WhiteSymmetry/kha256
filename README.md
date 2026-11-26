@@ -54,6 +54,13 @@
 
 ---
 
+* 0.3.7: qKHA256: quantum random
+* 0.3.9: mqKHA256: multi-quantum random
+* 0.4.8: KangarooTwelve as K12
+* 0.4.9: kha256sum – KHA-256 hash + sha256sum benzeri CLI
+
+---
+
 ## 📖 İçindekiler / Table of Contents
 - [🇹🇷 Türkçe](#türkçe)
   - [Özellikler](#özellikler)
